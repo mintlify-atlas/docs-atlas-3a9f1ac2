@@ -108,42 +108,42 @@ Access via **Options** → **Filter Manager** to create and manage custom filter
 
 <AccordionGroup>
   <Accordion title="Large Recent Files">
-    ```
+    ```text
     length:>10485760 AND modified:[NOW-30DAYS TO NOW] AND NOT deleted:true
     ```
     Files larger than 10MB modified in the last 30 days, not deleted
   </Accordion>
   
   <Accordion title="User Documents">
-    ```
+    ```text
     category:Documents AND path:*Users* AND NOT name:~*
     ```
     Documents in user folders, excluding temporary files
   </Accordion>
   
   <Accordion title="Suspicious Executables">
-    ```
+    ```text
     (ext:exe OR ext:dll) AND (path:*AppData* OR path:*Temp*) AND NOT signatureValid:true
     ```
     Executables in temporary locations without valid signatures
   </Accordion>
   
   <Accordion title="External Storage Evidence">
-    ```
+    ```text
     path:*Removable* OR deviceName:"USB*" OR volumeLabel:*
     ```
     Files from removable media and external drives
   </Accordion>
   
   <Accordion title="Encrypted Communications">
-    ```
+    ```text
     category:"Instant Messages" AND (encrypted:true OR content:"end-to-end encryption")
     ```
     Encrypted chat messages
   </Accordion>
   
   <Accordion title="Recently Accessed Images">
-    ```
+    ```text
     category:Images AND accessed:[NOW-7DAYS TO NOW]
     ```
     Images accessed in the last week
@@ -162,7 +162,7 @@ The Categories tree provides automatic file type classification:
 
 IPED organizes files into hierarchical categories:
 
-```
+```text
 Documents
 ├─ Office Documents
 │  ├─ Word Documents
@@ -263,7 +263,7 @@ Toggle via checkbox above the evidence tree.
 
 ### Path-Based Filtering
 
-```
+```text
 path:"C:\Users\John\Documents\*"
 path:*AppData*
 parentPath:"/home/user/Downloads"

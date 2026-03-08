@@ -24,7 +24,7 @@ The search box is located in the top toolbar and supports multiple query types:
 
 Enter any text to search across file names and content:
 
-```
+```text
 password
 ```
 
@@ -37,7 +37,7 @@ This searches for the word "password" in:
 
 Use quotes for exact phrase matching:
 
-```
+```text
 "credit card number"
 ```
 
@@ -57,7 +57,7 @@ Search in specific metadata fields:
 
 <Tabs>
   <Tab title="Common Fields">
-    ```
+    ```text
     name:contract*
     content:confidential
     type:pdf
@@ -68,7 +68,7 @@ Search in specific metadata fields:
   </Tab>
   
   <Tab title="Date Fields">
-    ```
+    ```text
     modified:[2023-01-01 TO 2023-12-31]
     created:>2023-06-01
     accessed:<2023-01-01
@@ -76,14 +76,14 @@ Search in specific metadata fields:
   </Tab>
   
   <Tab title="Size Fields">
-    ```
+    ```text
     length:>1048576
     length:[100000 TO 500000]
     ```
   </Tab>
   
   <Tab title="Status Fields">
-    ```
+    ```text
     deleted:true
     carved:true
     encrypted:true
@@ -99,38 +99,38 @@ Combine search terms with boolean logic:
 <AccordionGroup>
   <Accordion title="AND Operator">
     Both terms must be present:
-    ```
+    ```text
     password AND database
     ```
     
     Implicit AND (space between terms):
-    ```
+    ```text
     password database
     ```
   </Accordion>
   
   <Accordion title="OR Operator">
     Either term can be present:
-    ```
+    ```text
     password OR credential
     ```
   </Accordion>
   
   <Accordion title="NOT Operator">
     Exclude items containing the term:
-    ```
+    ```text
     password NOT test
     ```
     
     Alternative syntax:
-    ```
+    ```text
     password -test
     ```
   </Accordion>
   
   <Accordion title="Required/Prohibited">
     Required (+) and prohibited (-) prefixes:
-    ```
+    ```text
     +password -test
     ```
   </Accordion>
@@ -140,11 +140,11 @@ Combine search terms with boolean logic:
 
 Use parentheses to control query logic:
 
-```
+```text
 (password OR credential) AND (database OR sql)
 ```
 
-```
+```text
 name:(report OR document) AND type:pdf
 ```
 
@@ -154,7 +154,7 @@ name:(report OR document) AND type:pdf
 
 Match any single character:
 
-```
+```text
 te?t
 ```
 
@@ -164,13 +164,13 @@ Matches: test, text, tent
 
 Match zero or more characters:
 
-```
+```text
 test*
 ```
 
 Matches: test, tests, testing, tester
 
-```
+```text
 *password*
 ```
 
@@ -182,7 +182,7 @@ Matches: password, passwords, mypassword, password123
 
 ### Examples
 
-```
+```text
 name:report_2023*.pdf
 name:document_?.docx
 content:pass*
@@ -194,7 +194,7 @@ content:pass*
 
 Use square brackets `[ ]` for inclusive boundaries:
 
-```
+```text
 modified:[2023-01-01 TO 2023-12-31]
 length:[1000000 TO 5000000]
 ```
@@ -203,7 +203,7 @@ length:[1000000 TO 5000000]
 
 Use curly brackets `{ }` for exclusive boundaries:
 
-```
+```text
 modified:{2023-01-01 TO 2023-12-31}
 ```
 
@@ -211,7 +211,7 @@ modified:{2023-01-01 TO 2023-12-31}
 
 Search for values greater or less than:
 
-```
+```text
 modified:>=2023-01-01
 length:<1000000
 created:>2023-06-15
@@ -221,7 +221,7 @@ created:>2023-06-15
 
 Dates can be specified in various formats:
 
-```
+```text
 modified:2023-01-15
 modified:"2023-01-15 14:30:00"
 modified:[2023-01 TO 2023-12]
@@ -233,7 +233,7 @@ modified:[2023-01 TO 2023-12]
 
 Find terms similar to the search term:
 
-```
+```text
 passwerd~
 ```
 
@@ -243,7 +243,7 @@ Matches: password, passwords (tolerates spelling errors)
 
 Specify maximum edit distance (0-2):
 
-```
+```text
 passwerd~1
 passwerd~2
 ```
@@ -256,7 +256,7 @@ passwerd~2
 
 Find words within a specific distance:
 
-```
+```text
 "password database"~10
 ```
 
@@ -266,7 +266,7 @@ Matches documents where "password" and "database" appear within 10 words of each
 
 Increase relevance of specific terms:
 
-```
+```text
 password^4 credential^2 access
 ```
 
@@ -280,28 +280,28 @@ IPED supports regex validation scripts for common patterns:
 
 <CardGroup cols={2}>
   <Card title="Email Addresses" icon="envelope">
-    ```
+    ```text
     regex:email
     ```
     Finds email addresses with validation
   </Card>
   
   <Card title="Credit Cards" icon="credit-card">
-    ```
+    ```text
     regex:credit-card
     ```
     Finds credit card numbers with Luhn algorithm validation
   </Card>
   
   <Card title="URLs" icon="link">
-    ```
+    ```text
     regex:url
     ```
     Extracts web addresses
   </Card>
   
   <Card title="IP Addresses" icon="network-wired">
-    ```
+    ```text
     regex:ip
     ```
     Finds IPv4 addresses
@@ -340,7 +340,7 @@ IPED supports regex validation scripts for common patterns:
 
 ### Search by File Properties
 
-```
+```text
 type:"application/pdf"
 ext:jpg
 mimeType:"image/jpeg"
@@ -348,7 +348,7 @@ mimeType:"image/jpeg"
 
 ### Search by Hash
 
-```
+```text
 hash:5d41402abc4b2a76b9719d911017c592
 md5:5d41402abc4b2a76b9719d911017c592
 sha-1:aaf4c61ddcc5e8a2dabede0f3b482cd9aea9434d
@@ -357,7 +357,7 @@ sha-256:2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae
 
 ### Search by Category
 
-```
+```text
 category:"Office Documents"
 category:Images
 category:"Compressed Files"
@@ -371,7 +371,7 @@ category:"Compressed Files"
 
 Search extracted metadata:
 
-```
+```text
 author:"John Doe"
 subject:confidential
 lastModifiedBy:smith
@@ -382,42 +382,42 @@ exif:model:"Canon EOS"
 
 <AccordionGroup>
   <Accordion title="Find Recent Large Files">
-    ```
+    ```text
     length:>10485760 AND modified:>2023-01-01 AND NOT deleted:true
     ```
     Files larger than 10MB, modified after Jan 1 2023, not deleted
   </Accordion>
   
   <Accordion title="Find Encrypted Documents">
-    ```
+    ```text
     (type:pdf OR ext:docx OR ext:xlsx) AND encrypted:true
     ```
     Encrypted Office documents and PDFs
   </Accordion>
   
   <Accordion title="Find Deleted Images">
-    ```
+    ```text
     category:Images AND deleted:true
     ```
     All deleted image files
   </Accordion>
   
   <Accordion title="Find Specific User's Documents">
-    ```
+    ```text
     (author:"Jane Smith" OR lastModifiedBy:"Jane Smith") AND category:Documents
     ```
     Documents created or modified by specific user
   </Accordion>
   
   <Accordion title="Find Files by Extension Pattern">
-    ```
+    ```text
     name:*.tmp OR name:*.log OR name:*.bak
     ```
     Temporary, log, and backup files
   </Accordion>
   
   <Accordion title="Find Carved Data">
-    ```
+    ```text
     carved:true AND (category:Images OR category:Videos)
     ```
     Recovered multimedia from unallocated space

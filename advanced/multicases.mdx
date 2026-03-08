@@ -86,7 +86,7 @@ In multicase mode, the interface shows which case each item belongs to:
 
 Search queries automatically span all loaded cases:
 
-```
+```text
 # Find all emails across all cases
 type:email
 
@@ -101,7 +101,7 @@ type:image AND source:case1
 
 Bookmarks in multicase mode can contain items from multiple sources:
 
-```
+```text
 1. Search: password AND (type:doc OR type:pdf)
 2. Select relevant items from all cases
 3. Create bookmark: "Password Documents"
@@ -295,7 +295,7 @@ Unified timeline across all cases:
 4. Filter by case, date range, or event type
 
 **Example workflow:**
-```
+```text
 1. Set date range: 2023-01-15 to 2023-01-20
 2. Filter event types: Calls, Messages, File Access
 3. Identify suspicious time overlaps between suspects
@@ -342,7 +342,7 @@ See [Web API](/advanced/web-api) for full API documentation.
 
 Multicase creates metadata in a shared directory:
 
-```
+```text
 iped-multicases/
 └── multicase-{hash}/
     ├── graph/           # Cross-case graph database
@@ -381,7 +381,7 @@ Inconsistent processing can lead to missing correlations.
 <Accordion title="Use Meaningful Case Names">
 Name cases clearly in the file system:
 
-```
+```text
 Good:
 /cases/2023_investigation/suspect1_phone
 /cases/2023_investigation/suspect1_laptop
