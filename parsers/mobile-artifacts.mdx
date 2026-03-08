@@ -1,0 +1,540 @@
+---
+title: 'Mobile Artifact Parsers'
+description: 'Process mobile device extractions from UFDR, AD1, and native formats'
+icon: 'mobile'
+---
+
+## Overview
+
+IPED supports multiple mobile device extraction formats, including proprietary formats from commercial forensic tools. The mobile parsers handle both physical and logical extractions, processing app data, system databases, and communication artifacts.
+
+## UFDR Support
+
+**UFDR (Universal Forensic Data Reader)** is Cellebrite's format for mobile device extractions.
+
+### Overview
+
+IPED can process UFDR extractions without requiring Cellebrite Physical Analyzer:
+
+<CardGroup cols={2}>
+  <Card title="Direct Processing" icon="bolt">
+    Parse UFDR files directly in IPED
+  </Card>
+  <Card title="Chat Applications" icon="comments">
+    WhatsApp, Telegram, Facebook, Signal, etc.
+  </Card>
+  <Card title="Call Logs" icon="phone">
+    Voice and video call records
+  </Card>
+  <Card title="Contacts" icon="address-book">
+    Contact information and relationships
+  </Card>
+</CardGroup>
+
+### Supported Artifacts
+
+<ResponseField name="*.ufdr" type="UFDR Container">
+  Cellebrite extraction container format
+</ResponseField>
+
+<ResponseField name="ufdr.xml" type="XML Index">
+  UFDR extraction metadata and file listing
+</ResponseField>
+
+### UFDR Structure
+
+UFDR packages contain:
+
+```
+UFDR Package/
+├── ufdr.xml              # Main index
+├── data/                 # Extracted files
+│   ├── 0000001/
+│   ├── 0000002/
+│   └── ...
+├── Chats/               # Parsed chat databases
+│   ├── WhatsApp/
+│   ├── Telegram/
+│   └── ...
+└── Reports/             # UFDR reports (optional)
+```
+
+### Chat Processing
+
+The UfedChatParser handles chats from various apps:
+
+```java UfedChatParser
+public class UfedChatParser extends AbstractParser {
+    
+    // Supported applications
+    public static final Map<String, MediaType> appToMime = Map.ofEntries(
+        Map.entry("whatsapp", MediaType.application("x-ufed-chat-preview-whatsapp")),
+        Map.entry("telegram", MediaType.application("x-ufed-chat-preview-telegram")),
+        Map.entry("skype", MediaType.application("x-ufed-chat-preview-skype")),
+        Map.entry("facebook", MediaType.application("x-ufed-chat-preview-facebook")),
+        Map.entry("signal", MediaType.application("x-ufed-chat-preview-signal")),
+        Map.entry("snapchat", MediaType.application("x-ufed-chat-preview-snapchat")),
+        Map.entry("instagram", MediaType.application("x-ufed-chat-preview-instagram")),
+        Map.entry("viber", MediaType.application("x-ufed-chat-preview-viber")),
+        Map.entry("discord", MediaType.application("x-ufed-chat-preview-discord")),
+        Map.entry("tiktok", MediaType.application("x-ufed-chat-preview-tiktok")),
+        Map.entry("threema", MediaType.application("x-ufed-chat-preview-threema"))
+    );
+}
+```
+
+### Configuration
+
+```java UfedChatParser Configuration
+@Field
+public void setExtractMessages(boolean extractMessages);
+// Extract individual messages (default: true)
+
+@Field
+public void setExtractActivityLogs(boolean extractActivityLogs);
+// Extract activity log events (default: true)
+
+@Field
+public void setIgnoreEmptyChats(boolean ignoreEmptyChats);
+// Skip chats with no user messages (default: false)
+
+@Field
+public void setMinChatSplitSize(int minChatSplitSize);
+// Chat fragmentation threshold (default: 6000000)
+```
+
+### Extracted Metadata
+
+```java UFDR Chat Properties
+ExtraProperties.UFED_META_PREFIX + "*"          // UFDR-specific metadata
+ExtraProperties.CONVERSATION_PREFIX + "*"       // Conversation properties
+ExtraProperties.PARTICIPANTS                    // Chat participants
+ExtraProperties.USER_ACCOUNT                    // Account identifier
+ExtraProperties.MESSAGE_DATE                    // Message timestamp
+ExtraProperties.MESSAGE_BODY                    // Message content
+ExtraProperties.LINKED_ITEMS                    // Media attachments
+ExtraProperties.SHARED_HASHES                   // Sent media hashes
+```
+
+### Message Hierarchy
+
+```
+[UFDR Chat]
+├── Chat Preview (HTML)
+├── Message 1
+├── Message 2
+├── ...
+└── Activity Logs
+    ├── Group Member Added
+    ├── Name Changed
+    └── ...
+```
+
+## AD1 Format Support
+
+**AD1** is AccessData's logical evidence file format.
+
+### Overview
+
+<ResponseField name="*.ad1" type="AccessData Image">
+  Logical acquisition format from FTK and other AccessData tools
+</ResponseField>
+
+IPED can process AD1 images containing:
+
+- Mobile device logical acquisitions
+- Partial file system extractions
+- App data and databases
+- Media files and documents
+
+### Integration
+
+AD1 support is provided through:
+
+```java
+// Sleuthkit library handles AD1 format
+// IPED processes contained files with standard parsers
+```
+
+<Info>
+AD1 images are mounted as virtual file systems, then processed like standard disk images.
+</Info>
+
+## iOS Artifacts
+
+iOS-specific parsers handle Apple mobile device data.
+
+### Property List (Plist) Files
+
+<Tabs>
+  <Tab title="Binary Plist">
+    ```java
+    // Binary property list format
+    // Parsed using NSKeyedArchiverParser
+    ```
+  </Tab>
+  <Tab title="XML Plist">
+    ```xml
+    <?xml version="1.0" encoding="UTF-8"?>
+    <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" 
+              "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+    <plist version="1.0">
+    <dict>
+        <key>UserName</key>
+        <string>user@example.com</string>
+    </dict>
+    </plist>
+    ```
+  </Tab>
+</Tabs>
+
+### WhatsApp iOS
+
+See [Chat Applications](/parsers/chat-applications) for WhatsApp iOS support.
+
+```java
+// ChatStorage.sqlite
+// ContactsV2.sqlite
+// Plist configuration files
+```
+
+### Telegram iOS
+
+Telegram iOS uses SQLite databases:
+
+```java
+// Telegram iOS database structure
+// Parsed by TelegramParser with iOS mode
+```
+
+### Safari Artifacts
+
+See [Browsers](/parsers/browsers) for Safari parser details.
+
+```java
+// History.db
+// Bookmarks.plist
+// Downloads.plist
+```
+
+## Android Artifacts
+
+Android-specific parsers process Linux-based file structures.
+
+### XML Preferences
+
+Android apps store preferences in XML:
+
+```xml SharedPreferences Format
+<?xml version='1.0' encoding='utf-8' standalone='yes' ?>
+<map>
+    <string name="user_id">123456789</string>
+    <long name="timestamp" value="1234567890000" />
+    <boolean name="enabled" value="true" />
+</map>
+```
+
+### WhatsApp Android
+
+Processed by WhatsAppParser:
+
+```java
+// msgstore.db.crypt*
+// wa.db
+// com.whatsapp_preferences.xml
+```
+
+### Telegram Android
+
+Processed by TelegramParser:
+
+```java
+// cache4.db
+// userconfing.xml (base64-encoded user data)
+```
+
+### SQLite Databases
+
+Android uses SQLite extensively:
+
+```java
+// Standard Android databases:
+// - contacts2.db (contacts)
+// - mmssms.db (SMS/MMS)
+// - telephony.db (call logs)
+// - calendar.db (calendar events)
+```
+
+## Timeline Analysis
+
+Mobile parsers extract timeline data:
+
+<CardGroup cols={2}>
+  <Card title="Message Timestamps" icon="clock">
+    Sent, received, and read receipts
+  </Card>
+  <Card title="Call Logs" icon="phone">
+    Call start, end, and duration
+  </Card>
+  <Card title="Location Data" icon="location-dot">
+    GPS coordinates with timestamps
+  </Card>
+  <Card title="App Activity" icon="mobile-screen">
+    App usage and interactions
+  </Card>
+</CardGroup>
+
+### Timestamp Formats
+
+<Tabs>
+  <Tab title="Unix Epoch">
+    ```java
+    // Seconds since 1970-01-01
+    long unixTime = 1234567890;
+    Date date = new Date(unixTime * 1000);
+    ```
+  </Tab>
+  <Tab title="Milliseconds">
+    ```java
+    // Milliseconds since 1970-01-01
+    long millis = 1234567890000L;
+    Date date = new Date(millis);
+    ```
+  </Tab>
+  <Tab title="iOS Core Data">
+    ```java
+    // Seconds since 2001-01-01
+    double iosTime = 123456789.0;
+    long unixMillis = (long)((iosTime + 978307200) * 1000);
+    ```
+  </Tab>
+</Tabs>
+
+## Location Data
+
+Mobile parsers extract and standardize GPS data:
+
+```java Location Format
+// Standardized as semicolon-separated:
+ExtraProperties.LOCATIONS = "latitude;longitude"
+
+// Example:
+metadata.set(ExtraProperties.LOCATIONS, "40.7128;-74.0060");
+
+// Multiple locations:
+metadata.add(ExtraProperties.LOCATIONS, "40.7128;-74.0060");
+metadata.add(ExtraProperties.LOCATIONS, "34.0522;-118.2437");
+```
+
+### Google Maps Integration
+
+IPED can display locations on maps:
+
+```java
+// Locations are georeferenced using:
+// - Google Maps
+// - Bing Maps
+// - OpenStreetMaps
+```
+
+## Contact Extraction
+
+Mobile parsers extract contact information:
+
+<ResponseField name="ExtraProperties.USER_NAME" type="string">
+  Contact display name
+</ResponseField>
+
+<ResponseField name="ExtraProperties.USER_PHONE" type="string">
+  Phone number (international format preferred)
+</ResponseField>
+
+<ResponseField name="ExtraProperties.USER_EMAIL" type="string">
+  Email address
+</ResponseField>
+
+<ResponseField name="ExtraProperties.USER_ACCOUNT" type="string">
+  App-specific account ID or username
+</ResponseField>
+
+<ResponseField name="ExtraProperties.USER_NOTES" type="string">
+  Additional notes or bio
+</ResponseField>
+
+<ResponseField name="ExtraProperties.THUMBNAIL_BASE64" type="base64">
+  Profile picture (base64-encoded)
+</ResponseField>
+
+## vCard Support
+
+Contacts can be extracted as vCards:
+
+```vcard vCard Format
+BEGIN:VCARD
+VERSION:3.0
+FN:John Doe
+TEL;TYPE=CELL:+1-555-123-4567
+EMAIL:john@example.com
+END:VCARD
+```
+
+Processed by VCardParser:
+
+```java
+if (message.getVcards() != null) {
+    metadata.set(StandardParser.INDEXER_CONTENT_TYPE, 
+                VCardParser.VCARD_MIME.toString());
+    for (String vcard : message.getVcards()) {
+        extractor.parseEmbedded(
+            new ByteArrayInputStream(vcard.getBytes(StandardCharsets.UTF_8)),
+            handler, metadata, false
+        );
+    }
+}
+```
+
+## Media Linking
+
+Mobile parsers link messages to media files:
+
+### Hash-Based Linking
+
+```java
+if (message.getMediaHash() != null) {
+    String query = BasicProps.HASH + ":" + message.getMediaHash();
+    metadata.add(ExtraProperties.LINKED_ITEMS, query);
+    
+    // For sent media:
+    if (message.isFromMe()) {
+        metadata.add(ExtraProperties.SHARED_HASHES, message.getMediaHash());
+    }
+}
+```
+
+### Thumbnail Extraction
+
+```java
+if (message.getThumb() != null) {
+    metadata.set(ExtraProperties.THUMBNAIL_BASE64,
+                Base64.getEncoder().encodeToString(message.getThumb()));
+}
+```
+
+## Performance Considerations
+
+<Warning>
+Mobile device extractions can contain millions of records. Consider:
+</Warning>
+
+- **Memory Usage**: Large chat databases require significant RAM
+- **Processing Time**: Message extraction and HTML generation can be slow
+- **Storage**: Generated HTML reports increase case size
+- **Indexing**: Individual message items increase search index size
+
+### Optimization Options
+
+```java
+// Disable individual message extraction:
+setExtractMessages(false);
+
+// Increase chat split size:
+setMinChatSplitSize(10000000);  // 10 MB
+
+// Ignore empty chats:
+setIgnoreEmptyChats(true);
+
+// Disable activity logs:
+setExtractActivityLogs(false);
+```
+
+## Integration with IPED
+
+Mobile parsers integrate with IPED features:
+
+<CardGroup cols={2}>
+  <Card title="Graph Analysis" icon="diagram-project">
+    Contact and communication network visualization
+  </Card>
+  <Card title="Timeline View" icon="timeline">
+    Unified timeline of messages, calls, and events
+  </Card>
+  <Card title="Hash Lookup" icon="database">
+    Automatic CSAM hash database checking
+  </Card>
+  <Card title="Bookmark System" icon="bookmark">
+    Tag important messages and conversations
+  </Card>
+</CardGroup>
+
+## Phone Parsing Configuration
+
+Control parser behavior for different sources:
+
+```java PhoneParsingConfig
+// Check if item is from UFDR:
+if (PhoneParsingConfig.isFromUfdrDatasourceReader(item)) {
+    // Special handling for UFDR data
+}
+
+// Enable external phone parsers only:
+if (PhoneParsingConfig.isExternalPhoneParsersOnly()) {
+    // Skip internal parsing
+    return;
+}
+```
+
+## Best Practices
+
+<Steps>
+  <Step title="Verify Extraction Integrity">
+    Check UFDR/AD1 extraction logs for completeness
+  </Step>
+  <Step title="Enable SHA-256 Hashing">
+    Required for media linking in chat applications
+  </Step>
+  <Step title="Configure Memory">
+    Allocate sufficient heap space for large databases
+  </Step>
+  <Step title="Use Appropriate Profiles">
+    Select forensic profile for complete extraction
+  </Step>
+  <Step title="Monitor Processing">
+    Watch for parser errors in large UFDR packages
+  </Step>
+</Steps>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Media Not Linked">
+    - Enable SHA-256 hash computation
+    - Verify HashTask is enabled
+    - Check that media files are in case
+  </Accordion>
+  <Accordion title="UFDR Chats Empty">
+    - Check if UFDR package contains parsed chats
+    - Verify UFDR extraction was successful
+    - Review Cellebrite extraction logs
+  </Accordion>
+  <Accordion title="Out of Memory Errors">
+    - Increase JVM heap size (-Xmx)
+    - Disable message extraction for preview
+    - Increase minChatSplitSize
+  </Accordion>
+  <Accordion title="Missing Timestamps">
+    - Verify timezone configuration
+    - Check for corrupted database records
+    - Review extraction tool settings
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Chat Parsers" icon="comments" href="/parsers/chat-applications">
+    Detailed chat application parsing
+  </Card>
+  <Card title="Parser Overview" icon="file-code" href="/parsers/overview">
+    Return to parser architecture overview
+  </Card>
+</CardGroup>

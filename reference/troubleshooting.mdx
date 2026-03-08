@@ -1,0 +1,666 @@
+---
+title: Troubleshooting
+description: Common issues, error messages, and solutions for IPED processing and analysis
+icon: wrench
+---
+
+## Common Processing Issues
+
+<Accordion title="Memory and Performance Issues">
+  <AccordionItem title="OutOfMemoryError during processing">
+    **Symptoms**: Processing crashes with `java.lang.OutOfMemoryError`
+    
+    **Common Causes**:
+    - Insufficient heap memory allocation
+    - Too many processing threads for available RAM
+    - Large files being processed
+    - Memory leak in specific task
+    
+    **Solutions**:
+    
+    1. **Increase Java heap memory**:
+       ```bash
+       # Edit IPED startup script
+       # Windows: iped.bat
+       # Linux: iped.sh
+       # Change -Xmx parameter (e.g., -Xmx32G for 32GB)
+       ```
+    
+    2. **Reduce processing threads**:
+       - Edit `LocalConfig.txt`
+       - Set `numThreads = 4` (or lower value)
+       - Fewer threads = less memory usage
+    
+    3. **Enable file fragmentation**:
+       - Check `conf/SplitLargeBinaryConfig.txt`
+       - Fragments very large files for efficient processing
+    
+    4. **Disable memory-intensive tasks**:
+       - `enableNamedEntityRecogniton = false`
+       - `enableOCR = false` (temporarily)
+       - `enableFaceRecognition = false`
+    
+    5. **Use SSD optimization**:
+       - Set `indexTempOnSSD = true` in `LocalConfig.txt`
+       - Reduces memory pressure
+  </AccordionItem>
+  
+  <AccordionItem title="Processing is extremely slow">
+    **Symptoms**: Processing takes much longer than expected
+    
+    **Diagnostic Steps**:
+    
+    1. **Check temp directory location**:
+       - Ensure `indexTemp` is on fast storage (SSD)
+       - Verify antivirus exclusions on temp folder
+       - Confirm no system indexing on temp directory
+    
+    2. **Enable SSD optimizations**:
+       ```properties
+       # LocalConfig.txt
+       indexTempOnSSD = true  # If temp is on SSD
+       outputOnSSD = true     # If output is on SSD
+       ```
+    
+    3. **Review enabled features**:
+       - OCR: Major performance impact
+       - Audio transcription: Slow without GPU
+       - Named entity recognition: 4x slowdown
+       - Face recognition: GPU recommended
+       - Yahoo NSFW: 10x slower than LedDie on CPU
+    
+    4. **Check hash database**:
+       - Store `hashesDB` on fast disk (SSD preferred)
+       - Separate from `indexTemp` if possible
+    
+    5. **Optimize thread count**:
+       - Set `numThreads = default` in `LocalConfig.txt`
+       - Or manually tune based on CPU cores
+    
+    6. **Use appropriate profile**:
+       - `fastmode` for quick triage
+       - `forensic` for complete analysis
+  </AccordionItem>
+  
+  <AccordionItem title="Negative estimated time to finish">
+    **Symptoms**: Progress shows negative time remaining
+    
+    **Cause**: Statistics calculation issue with certain evidence types (particularly UFDR)
+    
+    **Solution**: 
+    - This is a cosmetic issue
+    - Processing will complete normally
+    - Fixed in recent versions
+  </AccordionItem>
+</Accordion>
+
+## File Format Issues
+
+<Accordion title="Disk Image Problems">
+  <AccordionItem title="Cannot open E01/EX01 disk image">
+    **Symptoms**: Error loading evidence file
+    
+    **Solutions**:
+    
+    1. **Verify file integrity**:
+       - Check all segments present (.e01, .e02, etc.)
+       - Verify files not corrupted
+       - Check file permissions
+    
+    2. **Check format support**:
+       - E01: Fully supported
+       - EX01: Fully supported
+       - Ensure latest IPED version
+    
+    3. **Split images**:
+       - All segments must be in same directory
+       - Segments must be numbered correctly
+       - Only reference first segment in IPED
+  </AccordionItem>
+  
+  <AccordionItem title="Embedded VMDK not processing">
+    **Symptoms**: VMDK inside evidence not expanded
+    
+    **Causes**:
+    - Splitted VMDK (not supported for embedded)
+    - Snapshot VMDK (not supported)
+    - `processEmbeddedDisks = false`
+    
+    **Solutions**:
+    
+    1. **Enable embedded disk processing**:
+       ```properties
+       # IPEDConfig.txt
+       processEmbeddedDisks = true
+       ```
+    
+    2. **Verify VMDK type**:
+       - Single segment: Supported
+       - Differential: Supported
+       - Split segments: Not supported for embedded
+       - Snapshots: Not supported
+    
+    3. **Extract and process separately**:
+       - Export VMDK from main case
+       - Process as separate evidence
+  </AccordionItem>
+  
+  <AccordionItem title="UFDR files cannot be read or opened">
+    **Symptoms**: `Error reading UFDR content` or files cannot be opened temporarily
+    
+    **Causes**:
+    - Network path issues
+    - File locking
+    - Rapid file switching
+    - Race condition
+    
+    **Solutions**:
+    
+    1. **Copy UFDR locally**:
+       - Copy UFDR file to local disk
+       - Avoid processing from network shares
+    
+    2. **Wait between file switches**:
+       - Don't rapidly switch between files
+       - Allow file handles to release
+    
+    3. **Check permissions**:
+       - Verify read permissions on UFDR
+       - Check parent directory permissions
+    
+    4. **Update IPED**:
+       - Several UFDR fixes in recent versions
+       - Particularly versions 4.1+
+  </AccordionItem>
+</Accordion>
+
+## WhatsApp Parsing Issues
+
+<Accordion title="WhatsApp Database Problems">
+  <AccordionItem title="WhatsApp messages not parsed or missing">
+    **Symptoms**: WhatsApp chats empty or incomplete
+    
+    **Diagnostic Steps**:
+    
+    1. **Check database version**:
+       - Android: msgstore.db or msgstore.db.crypt*
+       - iOS: ChatStorage.sqlite
+       - Verify IPED supports version
+    
+    2. **Decrypt encrypted databases**:
+       - .crypt12, .crypt14, .crypt15 require decryption
+       - Use WhatsApp decryption tools first
+       - Decrypted DB should end in .db, not .db.crypt15.db
+    
+    3. **Check for multiple accounts**:
+       - Windows processing may have account/chat association issues
+       - Use Linux for WhatsApp processing if issues persist
+    
+    4. **Parsing timeout**:
+       - Very large databases may timeout
+       - Check for timeout messages in logs
+       - Increase timeout in configuration
+  </AccordionItem>
+  
+  <AccordionItem title="WhatsApp attachments not linked">
+    **Symptoms**: Media files missing from chats
+    
+    **Causes**:
+    - Attachments not in evidence
+    - Path issues
+    - Emoji in filenames (Windows)
+    - View-once media
+    
+    **Solutions**:
+    
+    1. **Include WhatsApp Media folder**:
+       - Add WhatsApp/Media folder to evidence
+       - Include .Shared folder (iOS)
+    
+    2. **Fix emoji filename issues**:
+       - Known issue on Windows with emoji filenames
+       - Fixed in version 4.1.3+
+       - Update to latest version
+    
+    3. **View-once media**:
+       - May not be recoverable if deleted
+       - Check for cached thumbnails
+       - Support added in version 4.2.0+
+  </AccordionItem>
+  
+  <AccordionItem title="Duplicate WhatsApp messages">
+    **Symptoms**: Same message appears multiple times
+    
+    **Causes**:
+    - Multiple database backups in evidence
+    - Recovered and active messages both present
+    - External parser and internal parser both enabled
+    
+    **Solutions**:
+    
+    1. **Check for multiple databases**:
+       - Remove old msgstore backups
+       - Keep only current database
+    
+    2. **Configure parser**:
+       ```properties
+       # ParsingTaskConfig.txt
+       phoneParsersToUse = internal
+       ```
+    
+    3. **Fixed in recent versions**:
+       - Update to IPED 4.1.3 or later
+       - iOS recovered media deduplication fixed
+  </AccordionItem>
+</Accordion>
+
+## Indexing and Search Issues
+
+<Accordion title="Search and Index Problems">
+  <AccordionItem title="Search returns no results">
+    **Symptoms**: Known content not found in searches
+    
+    **Diagnostic Steps**:
+    
+    1. **Verify indexing enabled**:
+       ```properties
+       # IPEDConfig.txt
+       indexFileContents = true
+       ```
+    
+    2. **Check file parsing**:
+       ```properties
+       # IPEDConfig.txt
+       enableFileParsing = true
+       ```
+    
+    3. **Review entropy test**:
+       - Encrypted/random files not indexed
+       - May cause loss of hits in random content
+       ```properties
+       entropyTest = false  # To disable
+       ```
+    
+    4. **Verify search syntax**:
+       - Use quotes for phrases: `"exact phrase"`
+       - Wildcards: `test*` or `*test*`
+       - Property search: `name:document.pdf`
+    
+    5. **Check file type**:
+       - Some formats may not be parsed
+       - Verify format in supported formats list
+  </AccordionItem>
+  
+  <AccordionItem title="Index corruption or cannot open case">
+    **Symptoms**: Case won't open, index errors
+    
+    **Solutions**:
+    
+    1. **Rebuild index**:
+       ```bash
+       # Use --restart option
+       java -jar iped.jar --restart -d evidence/ -o output/
+       ```
+    
+    2. **Check disk space**:
+       - Ensure sufficient space in output folder
+       - Index can be large for big cases
+    
+    3. **Verify Java version**:
+       - Use Java 11 with JavaFX
+       - Liberica OpenJDK 11 Full JDK recommended
+    
+    4. **Check for file locks**:
+       - Close any open instances
+       - Check for orphaned Java processes
+       - Reboot if necessary
+  </AccordionItem>
+  
+  <AccordionItem title="Hits not highlighted in preview">
+    **Symptoms**: Search finds files but doesn't highlight matches
+    
+    **Causes**:
+    - Multi-term query issue
+    - Preview not refreshing
+    - OCR text not displaying
+    
+    **Solutions**:
+    
+    1. **Check query type**:
+       - Simple terms highlight best
+       - Complex queries may not highlight
+    
+    2. **Refresh preview**:
+       - Click another file and back
+       - Reopen case
+    
+    3. **OCR text issues**:
+       - Fixed in version 4.2.1
+       - Update to latest version
+  </AccordionItem>
+</Accordion>
+
+## Python and AI Model Issues
+
+<Accordion title="Python Task Errors">
+  <AccordionItem title="Face recognition not working">
+    **Symptoms**: `ClassNotFoundException` or no faces detected
+    
+    **Solutions**:
+    
+    1. **Install Python dependencies**:
+       ```bash
+       pip install face_recognition
+       pip install dlib
+       ```
+    
+    2. **Verify Python path**:
+       - IPED includes embedded Python
+       - Or use system Python with JEP
+       - Check Python modules documentation
+    
+    3. **Check image processing**:
+       - Ensure `enableImageThumbs = true`
+       - Thumbnails must be generated first
+    
+    4. **Linux-specific**:
+       - Build dlib with GPU support if available
+       - Install cmake and gcc
+  </AccordionItem>
+  
+  <AccordionItem title="Audio transcription fails">
+    **Symptoms**: Transcription not working or crashes
+    
+    **Causes**:
+    - Missing Python libraries
+    - Model not found
+    - Encoding issues
+    - Timeout
+    
+    **Solutions**:
+    
+    1. **Check implementation**:
+       ```properties
+       # AudioTranscriptConfig.txt
+       implementationClass = iped.engine.task.transcript.VoskTranscriptTask
+       ```
+    
+    2. **Download required models**:
+       - Vosk: https://alphacephei.com/vosk/models
+       - Place in `models/vosk/[lang]` folder
+    
+    3. **Verify audio format support**:
+       - Check `mimesToProcess` in AudioTranscriptConfig.txt
+       - Ensure FFmpeg/mplayer available
+    
+    4. **Fix encoding issues**:
+       - Non-Latin language issues fixed in 4.2.1+
+       - Update to latest version
+    
+    5. **Increase timeout**:
+       ```properties
+       # AudioTranscriptConfig.txt
+       minTimeout = 300
+       timeoutPerSec = 5
+       ```
+  </AccordionItem>
+  
+  <AccordionItem title="CSAM detector not working">
+    **Symptoms**: No AI classification properties
+    
+    **Requirements**:
+    
+    1. **Install AI framework**:
+       - TensorFlow: `pip install tensorflow`
+       - PyTorch: `pip install torch timm`
+       - ONNX: `pip install onnxruntime`
+    
+    2. **Configure model**:
+       ```properties
+       # CSAMDetectorConfig.txt
+       ModelFile = pytorch_B0_v3_1_2_fp32.onnx
+       ```
+    
+    3. **Enable prerequisites**:
+       ```properties
+       # IPEDConfig.txt
+       enableImageThumbs = true
+       enableHash = true
+       enableCSAMDetector = true
+       ```
+    
+    4. **Obtain model files**:
+       - Proprietary models required
+       - Contact IPED team for law enforcement access
+  </AccordionItem>
+</Accordion>
+
+## Report Generation Issues
+
+<Accordion title="Report Problems">
+  <AccordionItem title="HTML report generation fails">
+    **Symptoms**: Error creating report or incomplete report
+    
+    **Solutions**:
+    
+    1. **Check dependencies**:
+       - Ensure all required tasks completed
+       - Verify index not corrupted
+    
+    2. **Disable problematic features**:
+       ```properties
+       # HTMLReportConfig.txt
+       # Temporarily disable features causing issues
+       ```
+    
+    3. **Memory issues**:
+       - Large reports need more memory
+       - Increase Java heap: -Xmx
+       - Generate smaller reports (fewer bookmarks)
+    
+    4. **Multicase issues**:
+       - Bookmarks may be lost
+       - Fixed in version 4.1.6+
+       - Update to latest version
+  </AccordionItem>
+  
+  <AccordionItem title="Broken links in report">
+    **Symptoms**: Links to files or attachments don't work
+    
+    **Causes**:
+    - Thumbnail-only mode
+    - Hash algorithm mismatch
+    - Emoji in filenames
+    
+    **Solutions**:
+    
+    1. **Check hash configuration**:
+       ```properties
+       # IPEDConfig.txt
+       enableHash = true
+       ```
+       - At least SHA-256 should be enabled
+       - Fixed in version 4.0.2+
+    
+    2. **Thumbnail-only reports**:
+       - Issue with thumbs-only option
+       - Fixed in version 4.2.0+
+    
+    3. **WhatsApp attachments with emojis**:
+       - Fixed in version 4.1.3+
+       - Update to latest version
+  </AccordionItem>
+</Accordion>
+
+## Operating System Specific Issues
+
+<Accordion title="Windows Issues">
+  <AccordionItem title="Long path names cause errors">
+    **Symptoms**: Cannot access files with long paths
+    
+    **Solutions**:
+    
+    1. **Enable long path support**:
+       - Windows 10 version 1607+
+       - Enable in Group Policy or Registry
+       - Or use shorter output path
+    
+    2. **Use mounted folders**:
+       - Fixed for paths >256 chars in version 4.1.4
+       - Update to latest version
+  </AccordionItem>
+  
+  <AccordionItem title="Cannot start - JavaFX missing">
+    **Symptoms**: GUI won't start, JavaFX errors
+    
+    **Solution**:
+    ```bash
+    # Use Liberica OpenJDK 11 Full JDK
+    # Includes JavaFX
+    # Download from: https://bell-sw.com/pages/downloads/
+    ```
+  </AccordionItem>
+</Accordion>
+
+<Accordion title="Linux Issues">
+  <AccordionItem title="Cannot decrypt APFS partition">
+    **Symptoms**: APFS password not working
+    
+    **Causes**:
+    - Sleuthkit version issue
+    - Password not set correctly
+    
+    **Solutions**:
+    
+    1. **Update Sleuthkit**:
+       - Use Sleuthkit 4.12.0+
+       - Apply IPED patches from source
+    
+    2. **Check password entry**:
+       - Password case-sensitive
+       - Special characters may need escaping
+    
+    3. **Linux vs Windows**:
+       - Some versions work on Windows, not Linux
+       - TSK 4.11.1 has known issues
+       - Update to 4.12.0+
+  </AccordionItem>
+  
+  <AccordionItem title="Missing system dependencies">
+    **Symptoms**: Native library errors
+    
+    **Solutions**:
+    
+    1. **Build Sleuthkit**:
+       ```bash
+       # Install dependencies
+       sudo apt-get install autoconf automake libtool
+       # Build from source with IPED patches
+       ```
+    
+    2. **Install required libraries**:
+       ```bash
+       sudo apt-get install libgomp1 libgfortran5
+       ```
+    
+    3. **Configure tskJarPath**:
+       ```properties
+       # LocalConfig.txt
+       tskJarPath = /usr/local/share/java/sleuthkit-4.12.0.jar
+       ```
+  </AccordionItem>
+</Accordion>
+
+## Database and Hash Lookup Issues
+
+<Accordion title="Hash Database Problems">
+  <AccordionItem title="Hash lookup not working">
+    **Symptoms**: Known files not flagged
+    
+    **Solutions**:
+    
+    1. **Configure hash database**:
+       ```properties
+       # LocalConfig.txt
+       hashesDB = /path/to/iped-hashes.db
+       ```
+    
+    2. **Import hash sets**:
+       ```bash
+       # Use hash import tool
+       java -jar iped.jar --importHashDB ...
+       ```
+    
+    3. **Enable lookup**:
+       ```properties
+       # IPEDConfig.txt
+       enableHashDBLookup = true
+       ```
+    
+    4. **Verify hashes enabled**:
+       ```properties
+       # IPEDConfig.txt
+       enableHash = true
+       ```
+  </AccordionItem>
+  
+  <AccordionItem title="NSRL import fails">
+    **Symptoms**: Error importing NSRL hash set
+    
+    **Solutions**:
+    
+    1. **Check NSRL version**:
+       - RDS v3 format supported in IPED 4.1.0+
+       - RDS v2 format supported in earlier versions
+    
+    2. **Memory requirements**:
+       - NSRL import needs significant memory
+       - Increase heap: -Xmx16G or higher
+    
+    3. **Import optimization**:
+       - Version 4.2.0+ optimized for full NSRL
+       - Update to latest version
+  </AccordionItem>
+</Accordion>
+
+## Getting Help
+
+<Note>
+**When seeking help, include**:
+
+1. **IPED version**: Check About dialog or release notes
+2. **Java version**: `java -version`
+3. **Operating system**: Windows/Linux version
+4. **Error messages**: Full stack trace from logs
+5. **Configuration**: Relevant config file settings
+6. **Evidence type**: Disk image, UFDR, folder, etc.
+7. **Processing profile**: forensic, triage, fastmode, etc.
+</Note>
+
+### Log Files
+
+Check log files for detailed error information:
+
+- Processing logs: In output folder
+- Analysis logs: In case folder
+- Console output: Terminal/command prompt
+
+### Reporting Issues
+
+<Card title="Report Issues" icon="github" href="https://github.com/sepinf-inc/IPED/issues">
+  Report bugs or request features on GitHub
+</Card>
+
+### Community Support
+
+Join the IPED community:
+
+- GitHub Discussions
+- IPED Wiki: https://github.com/sepinf-inc/IPED/wiki
+- User Manual: https://github.com/sepinf-inc/IPED/wiki/User-Manual
+
+## Related Resources
+
+- [Configuration Options](/reference/configuration-options) - Review configuration settings
+- [Processing Tasks](/reference/processing-tasks) - Understand task requirements
+- [Supported Formats](/reference/supported-formats) - Check format compatibility

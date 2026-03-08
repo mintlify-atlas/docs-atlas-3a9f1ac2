@@ -1,0 +1,665 @@
+---
+title: Bookmarks and Tagging
+description: Organize and mark evidence using IPED's powerful bookmark system
+icon: bookmark
+---
+
+IPED's bookmark system allows investigators to tag and organize evidence throughout the analysis process. Bookmarks provide a flexible way to group related items, track investigation progress, and prepare evidence for reporting.
+
+## Bookmark Basics
+
+### What are Bookmarks?
+
+Bookmarks (also called tags or labels) are named categories that you assign to evidence items:
+
+<CardGroup cols={2}>
+  <Card title="Organization" icon="folder-tree">
+    Group related evidence across file system boundaries
+  </Card>
+  
+  <Card title="Workflow" icon="list-check">
+    Track reviewed items and mark items of interest
+  </Card>
+  
+  <Card title="Collaboration" icon="users">
+    Share tagged evidence sets with team members
+  </Card>
+  
+  <Card title="Reporting" icon="file-export">
+    Export specific bookmark categories for reports
+  </Card>
+</CardGroup>
+
+### Bookmark Features
+
+- **Multiple Bookmarks**: Assign multiple bookmarks to a single item
+- **Color Coding**: Visual identification with custom colors
+- **Comments**: Add notes to bookmark categories
+- **Keyboard Shortcuts**: Fast tagging with hotkeys (0-9, A-Z)
+- **Persistent**: Saved in case database
+- **Searchable**: Filter results by bookmark
+
+<Info>
+  Bookmarks are saved in the case state files and persist between IPED sessions.
+</Info>
+
+## Bookmark Manager
+
+Access the Bookmark Manager via:
+
+- **Ctrl+B** keyboard shortcut
+- Top menu → **Options** → **Bookmark Manager**
+- Right-click bookmark tree → **Manage Bookmarks**
+
+<Frame>
+  <img src="/images/bookmark-manager.png" alt="Bookmark Manager" />
+</Frame>
+
+### Bookmark Manager Interface
+
+<Tabs>
+  <Tab title="Dataset Selection">
+    Choose which items to bookmark:
+    
+    - **Highlighted**: Currently selected items in results table
+    - **Checked**: All items marked with checkboxes
+    
+    **Include Duplicates**: Optionally include duplicate files (by hash)
+  </Tab>
+  
+  <Tab title="Bookmark List">
+    - Displays all existing bookmarks
+    - Shows assigned keyboard shortcuts
+    - Color indicators for each bookmark
+    - Item counts per bookmark
+  </Tab>
+  
+  <Tab title="Actions">
+    - **New**: Create a new bookmark category
+    - **Add**: Add selected items to bookmark
+    - **Remove**: Remove selected items from bookmark
+    - **Edit**: Change bookmark name or color
+    - **Delete**: Remove bookmark category entirely
+  </Tab>
+  
+  <Tab title="Comments">
+    - Text area for bookmark notes
+    - Update comments for selected bookmark
+    - Persistent notes saved with case
+  </Tab>
+</Tabs>
+
+## Creating Bookmarks
+
+### Method 1: Bookmark Manager
+
+<Steps>
+  <Step title="Open Bookmark Manager">
+    Press **Ctrl+B** or click Options → Bookmark Manager
+  </Step>
+  
+  <Step title="Enter Bookmark Name">
+    Type a descriptive name in the text field (max 256 characters)
+  </Step>
+  
+  <Step title="Add Optional Comment">
+    Enter notes in the comments field
+  </Step>
+  
+  <Step title="Click New">
+    Creates the bookmark category with auto-assigned color
+  </Step>
+  
+  <Step title="Select Items to Tag">
+    Choose "Highlighted" or "Checked" and click **Add**
+  </Step>
+</Steps>
+
+### Method 2: Keyboard Shortcuts
+
+<Steps>
+  <Step title="Create Bookmark with Shortcut">
+    1. Open Bookmark Manager (Ctrl+B)
+    2. Select a bookmark from the list
+    3. Press desired key (0-9, A-Z, or key combinations)
+    4. Shortcut is assigned to that bookmark
+  </Step>
+  
+  <Step title="Use Shortcut to Tag">
+    With items selected in results table:
+    - Press assigned key to add items to bookmark
+    - Press Alt+Key to remove items from bookmark
+  </Step>
+</Steps>
+
+<Warning>
+  Some keys are reserved:
+  - **Ctrl+A**: Select all (not available)
+  - **Ctrl+B**: Bookmark Manager (not available)
+  - **Ctrl+C**: Copy (not available)
+  - **Space**: Check/uncheck items
+  - **R, P, F, D**: Selection expansion
+  - **Arrow keys**: Navigation
+</Warning>
+
+## Tagging Items
+
+### Selecting Items to Tag
+
+**Highlighted Items (Table Selection):**
+
+1. Click items in results table to select
+2. Hold **Ctrl** for multi-select
+3. Hold **Shift** for range select
+4. Open Bookmark Manager
+5. Choose "Highlighted" option
+
+**Checked Items (Checkbox):**
+
+1. Check boxes next to items in results table
+2. Use **Space** key for quick checking
+3. **R** key to check recursively (all children)
+4. Open Bookmark Manager
+5. Choose "Checked" option
+
+<Tip>
+  Use checked items for building large evidence sets across multiple searches. Check items as you review, then bookmark them all at once.
+</Tip>
+
+### Adding Items to Bookmarks
+
+<Tabs>
+  <Tab title="Via Manager">
+    1. Select bookmark from list
+    2. Choose Highlighted or Checked
+    3. Click **Add** button
+    4. Items added to bookmark immediately
+  </Tab>
+  
+  <Tab title="Via Keyboard">
+    With items selected in table:
+    - Press assigned shortcut key
+    - Example: Press **1** for bookmark assigned to key 1
+    - Items added instantly
+  </Tab>
+  
+  <Tab title="Context Menu">
+    Right-click selected items:
+    - Select **Add to Bookmark**
+    - Choose bookmark from submenu
+    - Items tagged
+  </Tab>
+</Tabs>
+
+### Removing Items from Bookmarks
+
+<Tabs>
+  <Tab title="Via Manager">
+    1. Select bookmark from list
+    2. Choose Highlighted or Checked
+    3. Click **Remove** button
+  </Tab>
+  
+  <Tab title="Via Keyboard">
+    - Press **Alt+ShortcutKey**
+    - Example: **Alt+1** removes from bookmark 1
+  </Tab>
+  
+  <Tab title="Context Menu">
+    Right-click selected items:
+    - Select **Remove from Bookmark**
+    - Choose bookmark
+  </Tab>
+</Tabs>
+
+## Including Duplicates
+
+When tagging items, optionally include duplicate files:
+
+### Automatic Duplicate Detection
+
+Check **Add Duplicates** in Bookmark Manager:
+
+- Finds all files with same hash as selected items
+- Two methods: hash-based search or linear scan
+- Optimized algorithm selected automatically
+- Progress dialog shows duplicate search status
+
+**Use Cases:**
+- Mark all copies of evidence file
+- Track file distribution across devices
+- Identify data duplication patterns
+
+<Info>
+  Duplicate detection uses MD5/SHA-1/SHA-256 hashes. Empty files are excluded.
+</Info>
+
+## Managing Bookmarks
+
+### Edit Bookmark Properties
+
+<Steps>
+  <Step title="Select Bookmark">
+    Click bookmark in Bookmark Manager list
+  </Step>
+  
+  <Step title="Click Edit">
+    Opens edit dialog
+  </Step>
+  
+  <Step title="Modify Properties">
+    - **Name**: Change bookmark name
+    - **Color**: Select new color from palette
+  </Step>
+  
+  <Step title="Save Changes">
+    Click OK to apply
+  </Step>
+</Steps>
+
+### Bookmark Colors
+
+<CardGroup cols={3}>
+  <Card title="Auto-Assignment" icon="palette">
+    Colors automatically assigned when creating bookmarks
+  </Card>
+  
+  <Card title="Visual Coding" icon="eye">
+    Different colors help distinguish bookmark categories
+  </Card>
+  
+  <Card title="Customization" icon="paintbrush">
+    Edit to change color or maintain consistent scheme
+  </Card>
+</CardGroup>
+
+### Bookmark Comments
+
+Add context and notes to bookmark categories:
+
+1. Select bookmark in Bookmark Manager
+2. Type notes in comments text area
+3. Click **Update** to save
+
+**Comment Uses:**
+- Investigation notes
+- Reason for tagging
+- Follow-up actions needed
+- Evidence significance
+
+<Tip>
+  Use comments to document why items were bookmarked for future reference or team collaboration.
+</Tip>
+
+### Delete Bookmarks
+
+Remove entire bookmark category:
+
+1. Select bookmark in Bookmark Manager
+2. Click **Delete** button
+3. Confirm deletion
+4. Bookmark removed (items remain in case)
+
+<Warning>
+  Deleting a bookmark removes the category but does not delete the files themselves.
+</Warning>
+
+## Bookmarks Tree
+
+View and filter by bookmarks in the navigation panel:
+
+<Frame>
+  <img src="/images/bookmarks-tree.png" alt="Bookmarks Tree" />
+</Frame>
+
+### Tree Structure
+
+```
+Bookmarks (Root)
+├─ Evidence of Interest (128)
+├─ Reviewed Items (1,542)
+├─ Suspect Documents (45)
+├─ Timeline Events (89)
+└─ Exfiltrated Data (23)
+```
+
+- Root node shows total bookmarked items
+- Each bookmark shows item count
+- Color indicators match bookmark colors
+- Expand to see bookmark details
+
+### Filtering by Bookmark
+
+<Steps>
+  <Step title="Click Bookmark Tree Tab">
+    Select Bookmarks tab in navigation panel
+  </Step>
+  
+  <Step title="Click Bookmark Name">
+    Results table filters to show only items with that bookmark
+  </Step>
+  
+  <Step title="Clear Filter">
+    Click root node or use Clear Filters button
+  </Step>
+</Steps>
+
+<Info>
+  Bookmark filters can be combined with other filters (search, category, etc.).
+</Info>
+
+### Bookmark Tooltips
+
+Hover over bookmark in tree to see:
+
+- Bookmark name
+- Item count
+- Assigned keyboard shortcut (if any)
+- Comment text (if set)
+
+## Keyboard Shortcut Management
+
+### Assigning Shortcuts
+
+Keyboard shortcuts enable rapid tagging during analysis:
+
+<Steps>
+  <Step title="Open Bookmark Manager">
+    Press Ctrl+B
+  </Step>
+  
+  <Step title="Select Bookmark">
+    Click bookmark in list (only one)
+  </Step>
+  
+  <Step title="Press Desired Key">
+    Press any key or combination:
+    - Single keys: 0-9, A-Z
+    - With Ctrl: Ctrl+0-9, Ctrl+A-Z (except reserved)
+    - With Shift: Shift+Key
+  </Step>
+  
+  <Step title="Shortcut Assigned">
+    Key appears next to bookmark name
+  </Step>
+</Steps>
+
+### Using Shortcuts
+
+**Add to Bookmark:**
+
+1. Select items in results table
+2. Press shortcut key
+3. Items added to bookmark
+
+**Remove from Bookmark:**
+
+1. Select items in results table  
+2. Press **Alt+ShortcutKey**
+3. Items removed from bookmark
+
+### Removing Shortcuts
+
+To unassign a shortcut:
+
+1. Select bookmark in Bookmark Manager
+2. Press the currently assigned key again
+3. Shortcut removed
+
+<Note>
+  Shortcuts are saved with the case and persist between sessions.
+</Note>
+
+## Bookmark Workflows
+
+### Evidence Review Workflow
+
+<Steps>
+  <Step title="Create Review Bookmarks">
+    - "To Review" - Items pending examination
+    - "Reviewed" - Completed items
+    - "Relevant" - Items of interest
+    - "Excluded" - Items ruled out
+  </Step>
+  
+  <Step title="Assign Shortcuts">
+    - R key: Relevant
+    - E key: Excluded
+    - 1 key: To Review
+  </Step>
+  
+  <Step title="Review Process">
+    - Start with filtered result set
+    - Examine each item
+    - Press R for relevant, E for excluded
+    - Track progress via bookmark counts
+  </Step>
+</Steps>
+
+### Case Categories Workflow
+
+<Steps>
+  <Step title="Create Category Bookmarks">
+    Based on investigation needs:
+    - "Financial Records"
+    - "Communications"
+    - "Timeline Evidence"
+    - "User Activity"
+  </Step>
+  
+  <Step title="Tag During Analysis">
+    As you find relevant items:
+    - Assign appropriate category bookmark
+    - Multiple bookmarks per item if needed
+    - Add comments for context
+  </Step>
+  
+  <Step title="Generate Reports">
+    Filter by category bookmark and export
+  </Step>
+</Steps>
+
+### Multi-User Workflow
+
+<Steps>
+  <Step title="Assign User Bookmarks">
+    - "Analyst 1 - Assigned"
+    - "Analyst 2 - Assigned"
+    - "Analyst 1 - Completed"
+  </Step>
+  
+  <Step title="Distribute Work">
+    - Check items for each analyst
+    - Bookmark with assignment bookmark
+  </Step>
+  
+  <Step title="Track Progress">
+    - Analysts mark items as completed
+    - Monitor via bookmark counts
+  </Step>
+</Steps>
+
+## Advanced Bookmark Features
+
+### Recursive Checking
+
+Quickly check entire folder hierarchies:
+
+1. Select folder in evidence tree
+2. Press **R** key
+3. All descendant files checked
+4. Bookmark the checked items
+
+<Tip>
+  Use recursive checking to bookmark entire user directories or folder structures at once.
+</Tip>
+
+### Selection Expansion
+
+Expand selection to related items before bookmarking:
+
+<Tabs>
+  <Tab title="Parent Selection (P)">
+    - Select items
+    - Press **P**
+    - Parent containers added to selection
+    - Bookmark all together
+  </Tab>
+  
+  <Tab title="References (F)">
+    - Select item
+    - Press **F**
+    - Referenced items added to selection
+  </Tab>
+  
+  <Tab title="Referenced By (D)">
+    - Select item
+    - Press **D**
+    - Items referencing this added
+  </Tab>
+</Tabs>
+
+### Bookmark Export
+
+Bookmarked items can be exported:
+
+1. Filter by bookmark
+2. **Options** → **Export**
+3. Choose format:
+   - **HTML Report**: Formatted report with thumbnails
+   - **CSV Report**: Tabular data
+   - **ZIP Archive**: Files with metadata
+
+<Info>
+  HTML reports include bookmark names and comments for each item.
+</Info>
+
+## Bookmark Best Practices
+
+<AccordionGroup>
+  <Accordion title="Naming Conventions">
+    - Use clear, descriptive names
+    - Maintain consistent naming scheme
+    - Consider prefixes for categories (e.g., "CAT: Documents")
+    - Avoid special characters in names
+  </Accordion>
+  
+  <Accordion title="Organization">
+    - Create bookmarks before starting analysis
+    - Limit to essential categories (10-20 max)
+    - Use colors consistently
+    - Document bookmark purpose in comments
+  </Accordion>
+  
+  <Accordion title="Shortcuts">
+    - Assign to frequently used bookmarks
+    - Use logical key assignments (R for Relevant)
+    - Document shortcuts for team members
+    - Avoid conflicts with system shortcuts
+  </Accordion>
+  
+  <Accordion title="Comments">
+    - Add creation date in comments
+    - Document criteria for tagging
+    - Note evidence significance
+    - Track follow-up actions
+  </Accordion>
+  
+  <Accordion title="Workflow">
+    - Check items as you review
+    - Batch bookmark at logical stopping points
+    - Use filters to verify bookmark assignments
+    - Regular backup of case state files
+  </Accordion>
+</AccordionGroup>
+
+## Bookmark Persistence
+
+### State Files
+
+Bookmarks are saved in case state files:
+
+- Located in case output directory
+- Updated automatically on changes
+- Include bookmark assignments and metadata
+- Portable with case data
+
+### Backup and Recovery
+
+<Warning>
+  Always backup the entire case directory, including state files, to preserve bookmarks.
+</Warning>
+
+State files contain:
+- Bookmark names and colors
+- Item-to-bookmark assignments
+- Keyboard shortcuts
+- Comments
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Bookmark Not Saving">
+    - Check case directory is writable
+    - Verify disk space available
+    - Close and reopen IPED
+    - Check state file integrity
+  </Accordion>
+  
+  <Accordion title="Shortcut Not Working">
+    - Verify no conflict with system shortcuts
+    - Check focus is on results table
+    - Confirm shortcut assignment in manager
+    - Restart IPED if needed
+  </Accordion>
+  
+  <Accordion title="Duplicates Not Found">
+    - Verify hash values exist (computed during processing)
+    - Check "Include Duplicates" is enabled
+    - May take time on large cases
+    - Progress dialog shows status
+  </Accordion>
+  
+  <Accordion title="Missing Bookmarks After Reopen">
+    - Verify state files exist in case directory
+    - Check file permissions
+    - Restore from backup if available
+    - Re-create bookmarks if necessary
+  </Accordion>
+</AccordionGroup>
+
+## API and Scripting
+
+Bookmarks can be accessed via IPED's API:
+
+```java
+IMultiBookmarks bookmarks = ipedCase.getMultiBookmarks();
+
+// Get all bookmarks
+Set<String> bookmarkSet = bookmarks.getBookmarkSet();
+
+// Check if item is bookmarked
+boolean isBookmarked = bookmarks.isBookmarked(itemId, "Evidence");
+
+// Add item to bookmark
+bookmarks.addBookmark(itemId, "Relevant");
+
+// Get items in bookmark
+// (filter by bookmark name in query)
+```
+
+<Info>
+  See the [Web API](/advanced/web-api) documentation for remote bookmark management.
+</Info>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Analysis Features" icon="magnifying-glass" href="/analysis/searching">
+    Learn advanced search and filtering techniques
+  </Card>
+  
+  <Card title="Web API" icon="globe" href="/advanced/web-api">
+    Access bookmarks remotely via REST API
+  </Card>
+</CardGroup>

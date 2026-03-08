@@ -1,97 +1,105 @@
 ---
-title: "Introduction"
-description: "Welcome to the new home for your documentation"
+title: "Welcome to IPED"
+description: "Open source digital forensics tool for processing and analyzing digital evidence"
 ---
 
-## Setting up
+# IPED Digital Forensic Tool
 
-Get your documentation site up and running in minutes.
+IPED (Digital Evidence Processor and Indexer) is an open source software that processes and analyzes digital evidence seized at crime scenes by law enforcement or in corporate investigations by private examiners.
 
-<Card
-  title="Start here"
-  icon="rocket"
-  href="/quickstart"
-  horizontal
->
-  Follow our three step quickstart guide.
-</Card>
-
-## Make it yours
-
-Design a docs site that looks great and empowers your users.
-
-<Columns cols={2}>
+<CardGroup cols={2}>
   <Card
-    title="Edit locally"
-    icon="pen-to-square"
-    href="/development"
+    title="Quick Start"
+    icon="rocket"
+    href="/quickstart"
   >
-    Edit your docs locally and preview them in real time.
+    Get IPED running and process your first case
   </Card>
   <Card
-    title="Customize your site"
-    icon="palette"
-    href="/essentials/settings"
+    title="Installation"
+    icon="download"
+    href="/installation"
   >
-    Customize the design and colors of your site to match your brand.
-  </Card>
-    <Card
-    title="Set up navigation"
-    icon="map"
-    href="/essentials/navigation"
-  >
-    Organize your docs to help users find what they need and succeed with your product.
+    Build from source or download a release
   </Card>
   <Card
-    title="API documentation"
-    icon="terminal"
-    href="/api-reference/introduction"
+    title="Processing Evidence"
+    icon="gears"
+    href="/processing/command-line"
   >
-    Auto-generate API documentation from OpenAPI specifications.
-  </Card>
-</Columns>
-
-## Create beautiful pages
-
-Everything you need to create world-class documentation.
-
-<Columns cols={2}>
-  <Card
-    title="Write with MDX"
-    icon="pen-fancy"
-    href="/essentials/markdown"
-  >
-    Use MDX to style your docs pages.
+    Learn command-line processing options
   </Card>
   <Card
-    title="Code samples"
+    title="Analysis Interface"
+    icon="magnifying-glass"
+    href="/analysis/interface-overview"
+  >
+    Explore the integrated analysis GUI
+  </Card>
+</CardGroup>
+
+## Key Features
+
+IPED provides professional-grade digital forensics capabilities for law enforcement and corporate investigators.
+
+<CardGroup cols={2}>
+  <Card
+    title="Fast Processing"
+    icon="gauge-high"
+  >
+    Up to 400GB/h processing speed with multithreaded architecture supporting up to 135 million items
+  </Card>
+  <Card
+    title="Data Carving"
+    icon="scissors"
+  >
+    Efficient carving engine supporting 40+ file formats including videos, extensible by scripting
+  </Card>
+  <Card
+    title="Advanced Search"
+    icon="magnifying-glass-chart"
+  >
+    Fast indexing and searching with regex support, OCR, face recognition, and similar document search
+  </Card>
+  <Card
+    title="Timeline Analysis"
+    icon="timeline"
+  >
+    Unified timeline view with event filtering and graph analysis for communications
+  </Card>
+  <Card
+    title="Custom Parsers"
+    icon="messages"
+  >
+    Specialized parsers for WhatsApp, Telegram, Skype, BitTorrent, Emule, and more
+  </Card>
+  <Card
+    title="Extensible"
     icon="code"
-    href="/essentials/code"
   >
-    Add sample code to demonstrate how to use your product.
+    Script custom tasks in JavaScript and Python with external tool integration
   </Card>
-  <Card
-    title="Images"
-    icon="image"
-    href="/essentials/images"
-  >
-    Display images and other media.
-  </Card>
-  <Card
-    title="Reusable snippets"
-    icon="recycle"
-    href="/essentials/reusable-snippets"
-  >
-    Write once and reuse across your docs.
-  </Card>
-</Columns>
+</CardGroup>
 
-## Need inspiration?
+## Processing Profiles
 
-<Card
-  title="See complete examples"
-  icon="stars"
-  href="https://mintlify.com/customers"
->
-  Browse our showcase of exceptional documentation sites.
-</Card>
+IPED includes specialized processing profiles for different investigation types:
+
+- **Forensic** - Complete forensic analysis with all features enabled
+- **CSAM** - Optimized for child safety investigations with specialized detection
+- **Triage** - Quick analysis for time-sensitive cases
+- **Fastmode** - Preview processing for rapid assessment
+- **Blind** - Automatic data extraction without manual intervention
+
+## Supported Evidence Sources
+
+Process multiple evidence types with comprehensive format support:
+
+- **Disk Images**: RAW/DD, E01, EX01, ISO9660, AFF, VHD, VHDX, VMDK (including differential)
+- **Mobile**: UFDR (Cellebrite), AD1 (AccessData), logical extractions
+- **File Systems**: NTFS, FAT, exFAT, HFS+, APFS, Ext2/3/4
+- **Containers**: Recursive expansion of dozens of archive and container formats
+
+<Note>
+IPED was developed by digital forensic experts from the Brazilian Federal Police since 2012 and officially open-sourced in 2019.
+</Note>

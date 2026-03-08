@@ -1,0 +1,672 @@
+---
+title: "Data Sources"
+description: "Supported evidence formats and data sources for IPED processing"
+---
+
+IPED supports a wide variety of digital evidence formats, from forensic disk images to physical devices and local folders. This comprehensive support allows investigators to process evidence from virtually any source.
+
+## Supported Formats Overview
+
+IPED uses the [Sleuthkit Library](https://github.com/sleuthkit/sleuthkit) for disk image decoding and file system parsing, providing broad format compatibility.
+
+<CardGroup cols={2}>
+  <Card title="Forensic Images" icon="compact-disc">
+    E01, Ex01, AFF, AD1, UFDR formats
+  </Card>
+  
+  <Card title="Raw Images" icon="file">
+    DD, RAW, split segments
+  </Card>
+  
+  <Card title="Virtual Disks" icon="server">
+    VMDK, VHD, VHDX (including differential disks)
+  </Card>
+  
+  <Card title="Optical Media" icon="disc">
+    ISO9660, UDF, ISO formats
+  </Card>
+  
+  <Card title="Physical Devices" icon="hard-drive">
+    Direct access to physical drives
+  </Card>
+  
+  <Card title="File Systems" icon="folder-tree">
+    NTFS, FAT, exFAT, ext2/3/4, HFS+, APFS
+  </Card>
+  
+  <Card title="Local Folders" icon="folder">
+    Process live file systems and network shares
+  </Card>
+  
+  <Card title="IPED Cases" icon="box-archive">
+    Reprocess tagged files from existing cases
+  </Card>
+</CardGroup>
+
+## Forensic Disk Images
+
+### EnCase Evidence Files (E01/Ex01)
+
+<Icon icon="compact-disc" /> Expert Witness Format by Guidance Software
+
+**Supported variants:**
+- **E01** - Standard EnCase format
+- **Ex01** - Extended EnCase format
+- **Split segments** - E01, E02, E03, etc.
+- **Compressed** - Built-in compression supported
+- **Encrypted** - Password-protected images
+
+```bash Terminal
+# Single segment
+java -jar iped.jar -d /evidence/disk.E01 -o /cases/case001
+
+# Split segments (specify first segment only)
+java -jar iped.jar -d /evidence/disk.E01 -o /cases/case001
+
+# Encrypted image
+java -jar iped.jar -d /evidence/encrypted.E01 -p "password" -o /cases/case001
+```
+
+<Note>
+  IPED automatically detects and loads all segments when you specify the first file (.E01).
+</Note>
+
+### AccessData (AD1)
+
+<Icon icon="database" /> AccessData Forensic Toolkit image format
+
+**Features:**
+- Single file or segmented
+- Compressed and encrypted variants
+- Preserves metadata and hash information
+
+```bash Terminal
+java -jar iped.jar -d /evidence/image.AD1 -o /cases/case001
+```
+
+### Cellebrite (UFDR)
+
+<Icon icon="mobile" /> Cellebrite Universal Forensic Data Reader format
+
+**Common sources:**
+- Mobile device extractions
+- Cellebrite Physical Analyzer exports
+- UFED extractions
+
+```bash Terminal
+java -jar iped.jar -d /evidence/extraction.UFDR -o /cases/case001
+```
+
+### Advanced Forensic Format (AFF)
+
+<Icon icon="shield" /> Open-source forensic disk image format
+
+**Platforms:**
+- Full support on Linux
+- Limited support on Windows
+
+**Features:**
+- Compression
+- Encryption
+- Metadata storage
+- Chain of custody
+
+```bash Terminal Linux
+java -jar iped.jar -d /evidence/disk.aff -o /cases/case001
+```
+
+<Warning>
+  AFF support requires proper libraries installed. On Linux, ensure libaff and afflib are available.
+</Warning>
+
+## Raw Disk Images
+
+### DD / RAW Format
+
+<Icon icon="file" /> Bit-for-bit copy of storage media
+
+**Variants:**
+- **Single file** - Complete image in one file
+- **Split segments** - disk.001, disk.002, etc.
+- **DD** - Unix/Linux dd utility output
+- **RAW** - Generic raw format
+
+```bash Terminal
+# Single file
+java -jar iped.jar -d /evidence/disk.dd -o /cases/case001
+
+# Split segments (specify first segment)
+java -jar iped.jar -d /evidence/disk.001 -o /cases/case001
+```
+
+### Split Segment Naming
+
+IPED recognizes these naming patterns:
+- `disk.001`, `disk.002`, `disk.003`, ...
+- `disk.aa`, `disk.ab`, `disk.ac`, ...
+- `disk.000`, `disk.001`, `disk.002`, ...
+
+<Tip>
+  Always specify only the first segment. IPED automatically finds and loads subsequent segments.
+</Tip>
+
+## Virtual Disk Formats
+
+### VMware (VMDK)
+
+<Icon icon="server" /> VMware Virtual Machine Disk
+
+**Supported types:**
+- Monolithic sparse
+- Monolithic flat
+- Split sparse (2GB segments)
+- Split flat
+- **Differential disks** (snapshots with parent chain)
+
+```bash Terminal
+java -jar iped.jar -d /evidence/vm-disk.vmdk -o /cases/case001
+```
+
+<Note>
+  IPED supports differential VMDKs and automatically resolves parent disk chains.
+</Note>
+
+### VirtualBox / Hyper-V (VHD/VHDX)
+
+<Icon icon="cube" /> Microsoft Virtual Hard Disk formats
+
+**VHD Features:**
+- Fixed size
+- Dynamic (sparse)
+- Differencing disks
+
+**VHDX Features:**
+- Larger disk support (64TB)
+- Improved performance
+- Better corruption resistance
+
+```bash Terminal
+# VHD format
+java -jar iped.jar -d /evidence/vm.vhd -o /cases/case001
+
+# VHDX format
+java -jar iped.jar -d /evidence/vm.vhdx -o /cases/case001
+```
+
+## Optical Media
+
+### ISO / ISO9660
+
+<Icon icon="disc" /> Optical disc image format
+
+**Supported:**
+- ISO9660 (CD-ROM)
+- UDF (DVD/Blu-ray)
+- Hybrid ISO9660/UDF
+- Joliet extensions
+- Rock Ridge extensions
+
+```bash Terminal
+java -jar iped.jar -d /evidence/disc.iso -o /cases/case001
+```
+
+**Common sources:**
+- CD/DVD images
+- Software distributions
+- Backup archives
+- Bootable media
+
+## Physical Devices
+
+### Direct Device Access
+
+<Icon icon="hard-drive" /> Process physical drives directly
+
+**Linux:**
+```bash Terminal
+# Requires root/sudo
+sudo java -jar iped.jar -d /dev/sda -o /cases/case001
+
+# Specific partition
+sudo java -jar iped.jar -d /dev/sda1 -o /cases/case001
+```
+
+**Windows:**
+```batch Terminal
+# Requires administrator privileges
+java -jar iped.jar -d \\.\PhysicalDrive0 -o D:\cases\case001
+
+# Specific partition
+java -jar iped.jar -d \\.\E: -o D:\cases\case001
+```
+
+<Warning>
+  Processing physical drives requires:
+  - Administrator/root privileges
+  - Write blocker or read-only mode
+  - Proper forensic procedures
+  
+  Never process evidence drives without write protection!
+</Warning>
+
+### Windows Physical Drive Notation
+
+Windows uses special notation for physical devices:
+
+| Device | Notation |
+|--------|----------|
+| First physical drive | `\\.\PhysicalDrive0` |
+| Second physical drive | `\\.\PhysicalDrive1` |
+| Drive letter E: | `\\.\E:` |
+| Volume GUID | `\\?\Volume{guid}` |
+
+<Tip>
+  Use a write blocker when processing physical drives to maintain evidence integrity.
+</Tip>
+
+## File Systems
+
+### Supported File Systems
+
+IPED supports all file systems recognized by Sleuthkit:
+
+<Tabs>
+  <Tab title="Windows">
+    <Icon icon="windows" />
+    
+    - **NTFS** - Full support with all features
+    - **FAT12/16/32** - Including deleted file recovery
+    - **exFAT** - Modern large-volume FAT
+    
+    **Features:**
+    - Alternate Data Streams (ADS)
+    - File system journal parsing
+    - Deleted file recovery
+    - Slack space analysis
+  </Tab>
+  
+  <Tab title="Linux">
+    <Icon icon="linux" />
+    
+    - **ext2/ext3/ext4** - Full support
+    - **XFS** - Read support
+    - **Btrfs** - Basic support
+    - **F2FS** - Flash-friendly file system
+    
+    **Features:**
+    - Extended attributes
+    - Journal analysis
+    - Deleted inode recovery
+  </Tab>
+  
+  <Tab title="macOS">
+    <Icon icon="apple" />
+    
+    - **HFS+** - Full support
+    - **APFS** - Apple File System support
+    
+    **Features:**
+    - Resource forks
+    - Metadata preservation
+    - Time Machine snapshots
+  </Tab>
+  
+  <Tab title="Other">
+    - **ISO9660** - Optical media
+    - **UDF** - DVD/Blu-ray
+    - **UFS** - Unix File System
+    - **Yaffs2** - Flash file system
+  </Tab>
+</Tabs>
+
+### Timezone Handling
+
+FAT file systems don't store timezone information. Specify the original timezone:
+
+```bash Terminal
+java -jar iped.jar -d /evidence/disk.dd -tz GMT-5 -o /cases/case001
+```
+
+<Note>
+  NTFS and ext file systems store UTC timestamps and don't require timezone specification.
+</Note>
+
+## Local Folders
+
+### Processing Live File Systems
+
+<Icon icon="folder" /> Process folders directly from mounted file systems
+
+```bash Terminal
+# Process local folder
+java -jar iped.jar -d /mnt/evidence -o /cases/case001
+
+# Process network share
+java -jar iped.jar -d /mnt/network/share -o /cases/case001
+```
+
+**Use cases:**
+- Corporate network shares
+- Mounted disk images
+- Cloud storage sync folders
+- Live system analysis (with caution)
+
+### Owner Information
+
+Include file owner information (slow over network):
+
+```bash Terminal
+java -jar iped.jar -d /network/share --addowner -o /cases/case001
+```
+
+<Warning>
+  Processing live systems can alter timestamps. Use read-only mounts when possible.
+</Warning>
+
+## Embedded Disk Images
+
+### Nested Disk Images
+
+<Icon icon="layer-group" /> IPED automatically detects and processes disk images found within evidence
+
+**Supported scenarios:**
+- E01 files inside another disk image
+- VMDK inside a file system
+- VHD in email attachments
+- ISO files on a drive
+
+```bash Terminal
+# Automatically processes embedded disks
+java -jar iped.jar -d /evidence/laptop.E01 -o /cases/case001
+```
+
+**Configuration:**
+```text IPEDConfig.txt
+processEmbeddedDisks = true
+```
+
+<Note>
+  IPED can process multiple layers of nested disk images automatically.
+</Note>
+
+## IPED Case Files
+
+### Reprocessing Tagged Data
+
+<Icon icon="box-archive" /> Process files from existing IPED cases
+
+**Use case:** Export tagged/bookmarked files and reprocess with different settings
+
+```bash Terminal
+# Process files tagged in previous case
+java -jar iped.jar -d /cases/case001/export.iped -o /cases/case001_reprocess
+```
+
+**Workflow:**
+<Steps>
+  <Step title="Tag items in IPED viewer">
+    Select and bookmark relevant files
+  </Step>
+  
+  <Step title="Export tagged items">
+    File → Export → Create .iped file
+  </Step>
+  
+  <Step title="Reprocess with new settings">
+    Process the .iped file with different profile or configuration
+  </Step>
+</Steps>
+
+## Multiple Data Sources
+
+### Processing Multiple Sources
+
+<Icon icon="layer-group" /> Combine multiple evidence sources into one case
+
+```bash Terminal
+java -jar iped.jar \
+  -d /evidence/laptop.E01 -dname "Suspect Laptop" \
+  -d /evidence/phone.dd -dname "iPhone 12" \
+  -d /evidence/usb_drive -dname "USB Key" \
+  -d /evidence/cloud_sync -dname "Dropbox" \
+  -o /cases/multi_device_case
+```
+
+**Benefits:**
+- Unified search across all devices
+- Cross-device timeline analysis
+- Combined communication graphs
+- Single case for reporting
+
+### Adding to Existing Cases
+
+Append new evidence to processed cases:
+
+```bash Terminal
+java -jar iped.jar --append -d /evidence/new_device.dd -o /cases/existing_case
+```
+
+<Warning>
+  Version compatibility: IPED versions must match when appending to existing cases.
+</Warning>
+
+## Encrypted Evidence
+
+### Password-Protected Images
+
+<Icon icon="lock" /> Process encrypted disk images
+
+```bash Terminal
+# Single encrypted source
+java -jar iped.jar -d /evidence/encrypted.E01 -p "SecurePassword" -o /cases/case001
+
+# Multiple encrypted sources
+java -jar iped.jar \
+  -d /evidence/disk1.E01 -p "password1" \
+  -d /evidence/disk2.E01 -p "password2" \
+  -o /cases/case001
+```
+
+**Supported encryption:**
+- EnCase password protection
+- BitLocker encrypted volumes (with recovery key)
+- VeraCrypt containers (with password)
+
+## Sector Size Configuration
+
+### 4K Sector Drives
+
+<Icon icon="microchip" /> Modern drives with 4096-byte sectors
+
+```bash Terminal
+java -jar iped.jar -d /evidence/4k_drive.dd -b 4096 -o /cases/case001
+```
+
+**When to use:**
+- Modern large-capacity drives (4TB+)
+- Advanced Format drives
+- Some SSDs
+
+<Note>
+  Most drives still use 512-byte sectors. Only specify `-b 4096` if you're certain the drive uses 4K sectors.
+</Note>
+
+## Portable Cases
+
+### Relative Path References
+
+<Icon icon="truck" /> Create portable cases that can move between systems
+
+```bash Terminal
+java -jar iped.jar -d ./evidence/disk.E01 --portable -o ./cases/portable_case
+```
+
+**Requirements:**
+- Evidence and case must be on same volume
+- Use relative paths when specifying evidence
+- Move evidence and case together
+
+**Use cases:**
+- Cases on external drives
+- Sharing cases between investigators
+- Court presentation systems
+
+## Data Source Examples
+
+### Complete Forensic Workstation
+
+```bash Terminal
+java -jar iped.jar \
+  -d /evidence/laptop/disk.E01 -dname "Primary Laptop" \
+  -d /evidence/laptop/bitlocker.E01 -p "recovery-key" -dname "Encrypted Volume" \
+  -d /evidence/phone/android.dd -dname "Samsung Galaxy" \
+  -d /evidence/phone/iphone.ufdr -dname "iPhone Extraction" \
+  -d /evidence/cloud/gdrive -dname "Google Drive" \
+  -d /evidence/usb/flash.dd -dname "USB Flash Drive" \
+  -o /cases/comprehensive_case \
+  -profile forensic \
+  --portable
+```
+
+### Virtual Machine Investigation
+
+```bash Terminal
+java -jar iped.jar \
+  -d /evidence/vm/suspect.vmdk -dname "VM Disk" \
+  -d /evidence/vm/snapshot-001.vmdk -dname "Snapshot 1" \
+  -d /evidence/vm/memory.vmsn -dname "Memory Dump" \
+  -o /cases/vm_investigation
+```
+
+### Corporate Network Share
+
+```bash Terminal
+java -jar iped.jar \
+  -d /mnt/fileserver/users/suspect \
+  --addowner \
+  -o /cases/corporate_investigation \
+  -l /config/corporate_keywords.txt \
+  -profile triage
+```
+
+## Troubleshooting Data Sources
+
+<AccordionGroup>
+  <Accordion title="Cannot open disk image">
+    **Symptoms:** "File not found" or "Cannot read image"
+    
+    **Solutions:**
+    - Verify file exists and path is correct
+    - Check file permissions (read access required)
+    - For split segments, ensure all parts are present
+    - For physical drives, ensure administrator/root privileges
+  </Accordion>
+  
+  <Accordion title="Encrypted image won't open">
+    **Symptoms:** "Password incorrect" or "Cannot decrypt"
+    
+    **Solutions:**
+    - Verify password is correct (case-sensitive)
+    - Ensure quotes around password if it contains spaces
+    - Check encryption method is supported
+    - For BitLocker, use recovery key not password
+  </Accordion>
+  
+  <Accordion title="File system not detected">
+    **Symptoms:** "No file system found" or "Unknown file system"
+    
+    **Solutions:**
+    - Verify image isn't corrupted
+    - Check if file system is supported by Sleuthkit
+    - Try specifying sector size with `-b` option
+    - For damaged file systems, use specialized recovery tools first
+  </Accordion>
+  
+  <Accordion title="Slow processing over network">
+    **Symptoms:** Very slow processing speed
+    
+    **Solutions:**
+    - Copy evidence to local storage first
+    - Use gigabit or faster network
+    - Disable `--addowner` option for network shares
+    - Consider using VPN or direct connection
+  </Accordion>
+  
+  <Accordion title="Split segments not found">
+    **Symptoms:** "Cannot find segment X"
+    
+    **Solutions:**
+    - Ensure all segments are in same directory
+    - Verify segment numbering is sequential
+    - Check for naming inconsistencies
+    - Ensure no segments are missing
+  </Accordion>
+</AccordionGroup>
+
+## Best Practices
+
+<Steps>
+  <Step title="Verify evidence integrity">
+    Always verify hash values before and after processing:
+    ```bash Terminal
+    md5sum /evidence/disk.E01
+    # Process evidence
+    md5sum /evidence/disk.E01  # Should match
+    ```
+  </Step>
+  
+  <Step title="Use write blockers">
+    When processing physical devices, always use hardware or software write blockers.
+  </Step>
+  
+  <Step title="Document data sources">
+    Record all evidence sources, formats, and passwords in case documentation.
+  </Step>
+  
+  <Step title="Process locally when possible">
+    Copy evidence to local fast storage (SSD) for optimal processing speed.
+  </Step>
+  
+  <Step title="Test with small samples">
+    Test processing with sample data before processing large evidence sets.
+  </Step>
+</Steps>
+
+## Performance by Data Source
+
+| Format | Relative Speed | Notes |
+|--------|----------------|-------|
+| DD/RAW | Fast (baseline) | Best performance |
+| E01 | Medium | Decompression overhead |
+| Ex01 | Medium | Similar to E01 |
+| VMDK | Fast | Direct access |
+| VHD/VHDX | Fast | Efficient format |
+| Physical Device | Fast | Direct I/O |
+| Network Share | Slow | Network latency |
+| ISO | Fast | Simple format |
+| AD1 | Medium | Depends on compression |
+| UFDR | Medium | Mobile extraction format |
+
+<Tip>
+  For fastest processing, convert compressed formats to DD or process from local SSD storage.
+</Tip>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Command-Line Options" icon="terminal" href="/processing/command-line">
+    Learn parameters for processing different data sources
+  </Card>
+  
+  <Card title="Processing Profiles" icon="sliders" href="/processing/profiles">
+    Choose optimal profiles for different evidence types
+  </Card>
+  
+  <Card title="Configuration" icon="gear" href="/processing/configuration">
+    Configure file system and parsing options
+  </Card>
+  
+  <Card title="Troubleshooting" icon="wrench" href="https://github.com/sepinf-inc/IPED/wiki/Troubleshooting">
+    Solve data source processing issues
+  </Card>
+</CardGroup>

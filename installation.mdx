@@ -1,0 +1,346 @@
+---
+title: Installation
+description: Build and install IPED from source
+---
+
+## System Requirements
+
+<Note>
+IPED requires Java 11 with JavaFX. We recommend using **Liberica OpenJDK 11 Full JDK** which includes JavaFX.
+</Note>
+
+### Minimum Requirements
+
+- **Java**: JDK 11 + JavaFX (e.g., Liberica OpenJDK 11 Full JDK)
+- **Build Tool**: Apache Maven 3.x
+- **Version Control**: Git
+- **RAM**: 4GB minimum (8GB+ recommended for large cases)
+- **Disk Space**: 2GB for installation + space for case processing
+
+### Supported Platforms
+
+<CardGroup cols={2}>
+  <Card title="Windows" icon="windows">
+    Windows 10/11 (64-bit)
+  </Card>
+  <Card title="Linux" icon="linux">
+    Ubuntu, Debian, Fedora, CentOS (64-bit)
+  </Card>
+</CardGroup>
+
+## Prerequisites
+
+<Steps>
+  <Step title="Install Java JDK 11 with JavaFX">
+    Download and install Liberica OpenJDK 11 Full JDK from [bell-sw.com](https://bell-sw.com/pages/downloads/#jdk-11-lts)
+    
+    **Set JAVA_HOME environment variable:**
+    
+    <CodeGroup>
+    ```bash Linux/Mac
+    export JAVA_HOME=/path/to/liberica-jdk-11
+    export PATH=$JAVA_HOME/bin:$PATH
+    ```
+    
+    ```cmd Windows
+    set JAVA_HOME=C:\Path\To\liberica-jdk-11
+    set PATH=%JAVA_HOME%\bin;%PATH%
+    ```
+    </CodeGroup>
+    
+    Verify installation:
+    ```bash
+    java -version
+    # Should show: OpenJDK Runtime Environment (build 11.x.x)
+    ```
+  </Step>
+  
+  <Step title="Install Apache Maven">
+    Download Maven from [maven.apache.org](https://maven.apache.org/download.cgi)
+    
+    Extract and add to PATH:
+    ```bash
+    # Verify Maven installation
+    mvn -version
+    # Should show: Apache Maven 3.x.x
+    ```
+  </Step>
+  
+  <Step title="Install Git">
+    ```bash
+    # Ubuntu/Debian
+    sudo apt-get install git
+    
+    # CentOS/Fedora
+    sudo yum install git
+    
+    # Windows: Download from git-scm.com
+    ```
+  </Step>
+</Steps>
+
+## Building from Source
+
+<Warning>
+The default `master` branch is the development branch and may be **unstable**. For production use, checkout a release tag after cloning.
+</Warning>
+
+### Clone Repository
+
+```bash
+git clone https://github.com/sepinf-inc/IPED.git
+cd IPED
+```
+
+### Checkout Stable Release (Recommended)
+
+```bash
+# List available release tags
+git tag -l
+
+# Checkout latest stable release (e.g., 4.3.0)
+git checkout 4.3.0
+```
+
+### Build with Maven
+
+<CodeGroup>
+```bash Standard Build
+mvn clean install
+```
+
+```bash Skip Tests (Faster)
+mvn clean install -DskipTests
+```
+
+```bash Verbose Output
+mvn clean install -X
+```
+</CodeGroup>
+
+The build process will:
+
+1. Download all dependencies (first build may take 10-15 minutes)
+2. Compile all IPED modules:
+   - `iped-api`
+   - `iped-utils`
+   - `iped-parsers`
+   - `iped-viewers`
+   - `iped-carvers`
+   - `iped-geo`
+   - `iped-engine`
+   - `iped-app`
+3. Package the application
+4. Generate release in `target/release/` folder
+
+<Note>
+Successful build output:
+```
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time: 5:23 min
+```
+</Note>
+
+### Locate Built Application
+
+After successful build:
+
+```bash
+cd target/release/iped-4.4.0-SNAPSHOT
+ls -la
+```
+
+The release folder contains:
+- `iped.sh` / `iped.bat` - Processing launcher
+- `iped-search-app.sh` / `iped-search-app.bat` - Analysis GUI launcher
+- `lib/` - Java libraries
+- `tools/` - External tools (Sleuthkit, ImageMagick, etc.)
+- `conf/` - Configuration files
+- `plugins/` - Optional plugins
+
+## Linux-Specific Dependencies
+
+<Warning>
+On Linux, you must build **The Sleuthkit** and install additional dependencies.
+</Warning>
+
+### Install Build Dependencies
+
+<Tabs>
+  <Tab title="Ubuntu/Debian">
+    ```bash
+    sudo apt-get update
+    sudo apt-get install -y \
+      build-essential \
+      autoconf \
+      automake \
+      libtool \
+      pkg-config \
+      libafflib-dev \
+      libewf-dev \
+      libvhdi-dev \
+      libvmdk-dev \
+      zlib1g-dev \
+      libsqlite3-dev \
+      openjdk-11-jdk \
+      libjavafx-base-java \
+      libjavafx-controls-java \
+      libjavafx-graphics-java \
+      tesseract-ocr \
+      tesseract-ocr-eng
+    ```
+  </Tab>
+  
+  <Tab title="CentOS/RHEL/Fedora">
+    ```bash
+    sudo yum groupinstall "Development Tools"
+    sudo yum install -y \
+      autoconf \
+      automake \
+      libtool \
+      afflib-devel \
+      libewf-devel \
+      zlib-devel \
+      sqlite-devel \
+      java-11-openjdk-devel \
+      tesseract \
+      tesseract-langpack-eng
+    ```
+  </Tab>
+</Tabs>
+
+### Build Sleuthkit
+
+```bash
+# Download and build Sleuthkit 4.12.0
+wget https://github.com/sleuthkit/sleuthkit/releases/download/sleuthkit-4.12.0/sleuthkit-4.12.0.tar.gz
+tar -xzf sleuthkit-4.12.0.tar.gz
+cd sleuthkit-4.12.0
+
+./configure --prefix=/usr/local
+make
+sudo make install
+sudo ldconfig
+
+# Verify installation
+tsk_recover -V
+```
+
+### Install Optional Dependencies
+
+```bash
+# For advanced image processing
+sudo apt-get install imagemagick graphicsmagick
+
+# For video processing
+sudo apt-get install mplayer ffmpeg
+
+# For additional OCR languages
+sudo apt-get install tesseract-ocr-por tesseract-ocr-spa tesseract-ocr-fra
+```
+
+For complete Linux setup instructions, see the [IPED Linux Wiki](https://github.com/sepinf-inc/IPED/wiki/Linux).
+
+## Configuration
+
+### Verify Installation
+
+Test the installation:
+
+<CodeGroup>
+```bash Linux
+cd target/release/iped-4.4.0-SNAPSHOT
+./iped.sh --help
+```
+
+```cmd Windows
+cd target\release\iped-4.4.0-SNAPSHOT
+iped.bat --help
+```
+</CodeGroup>
+
+Expected output:
+```
+Usage: iped [options]
+  Options:
+    -d, -data       input data (can be used multiple times)
+    -o, -output     output folder
+    -profile        use a processing profile: forensic, pedo, fastmode, blind, triage
+    --help          display this help
+    ...
+```
+
+### Memory Configuration
+
+For large cases, adjust memory settings in `LocalConfig.txt`:
+
+```properties
+# Maximum heap memory (MB)
+# Default auto-detects available RAM
+# Manually set for large cases:
+maxJavaMemory = 16384
+
+# Number of processing threads
+# Default: number of CPU cores
+numThreads = 8
+```
+
+## Updating IPED
+
+To update to a newer version:
+
+```bash
+cd IPED
+git fetch --tags
+git checkout <new-version-tag>
+mvn clean install
+```
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="OutOfMemoryError during build">
+    Increase Maven memory:
+    ```bash
+    export MAVEN_OPTS="-Xmx2048m"
+    mvn clean install
+    ```
+  </Accordion>
+  
+  <Accordion title="JavaFX runtime components are missing">
+    Ensure you're using JDK 11 with JavaFX included (like Liberica Full JDK), or add JavaFX modules manually:
+    ```bash
+    # Download JavaFX SDK from openjfx.io
+    # Add to VM options: --module-path /path/to/javafx-sdk/lib --add-modules javafx.controls,javafx.fxml
+    ```
+  </Accordion>
+  
+  <Accordion title="Sleuthkit not found on Linux">
+    Ensure Sleuthkit is installed and in library path:
+    ```bash
+    sudo ldconfig
+    ldconfig -p | grep sleuthkit
+    ```
+  </Accordion>
+  
+  <Accordion title="Build fails in timezone tests">
+    Some tests may fail in certain timezones. Skip tests:
+    ```bash
+    mvn clean install -DskipTests
+    ```
+  </Accordion>
+</AccordionGroup>
+
+For more troubleshooting, see the [IPED Troubleshooting Wiki](https://github.com/sepinf-inc/IPED/wiki/Troubleshooting).
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Quick Start" icon="rocket" href="/quickstart">
+    Process your first case with IPED
+  </Card>
+  <Card title="Configuration" icon="gear" href="/configuration">
+    Customize IPED settings and profiles
+  </Card>
+</CardGroup>

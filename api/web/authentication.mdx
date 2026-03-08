@@ -1,0 +1,380 @@
+---
+title: Web API Authentication
+description: Authentication and authorization for IPED Web API
+---
+
+The IPED Web API provides RESTful HTTP endpoints for remote case access. Currently, the API operates without built-in authentication.
+
+## Current Security Model
+
+The IPED Web API v4.1 does **not** include built-in authentication or authorization mechanisms.
+
+<Warning>
+  **Security Notice**: The Web API should only be deployed on trusted networks or behind a secure reverse proxy with authentication.
+</Warning>
+
+## Deployment Security
+
+### Network Security
+
+Bind to localhost only for local access:
+
+```bash
+java -jar iped.jar --webapi \
+  --host=127.0.0.1 \
+  --port=8080 \
+  --sources=/path/to/sources.json
+```
+
+### Reverse Proxy Authentication
+
+For production deployments, use a reverse proxy with authentication:
+
+#### Nginx with Basic Auth
+
+```nginx
+server {
+    listen 443 ssl;
+    server_name iped-api.example.com;
+    
+    ssl_certificate /etc/ssl/certs/cert.pem;
+    ssl_certificate_key /etc/ssl/private/key.pem;
+    
+    location / {
+        auth_basic "IPED API";
+        auth_basic_user_file /etc/nginx/.htpasswd;
+        
+        proxy_pass http://localhost:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+}
+```
+
+Create password file:
+
+```bash
+sudo htpasswd -c /etc/nginx/.htpasswd analyst1
+sudo htpasswd /etc/nginx/.htpasswd analyst2
+```
+
+#### Apache with Basic Auth
+
+```apache
+<VirtualHost *:443>
+    ServerName iped-api.example.com
+    
+    SSLEngine on
+    SSLCertificateFile /etc/ssl/certs/cert.pem
+    SSLCertificateKeyFile /etc/ssl/private/key.pem
+    
+    <Location />
+        AuthType Basic
+        AuthName "IPED API"
+        AuthUserFile /etc/apache2/.htpasswd
+        Require valid-user
+        
+        ProxyPass http://localhost:8080/
+        ProxyPassReverse http://localhost:8080/
+    </Location>
+</VirtualHost>
+```
+
+### API Gateway
+
+Use an API gateway for advanced authentication:
+
+#### Kong Gateway
+
+```yaml
+services:
+  - name: iped-api
+    url: http://localhost:8080
+    routes:
+      - name: iped-route
+        paths:
+          - /
+    plugins:
+      - name: key-auth
+      - name: rate-limiting
+        config:
+          minute: 100
+```
+
+#### AWS API Gateway
+
+Deploy behind AWS API Gateway with:
+- IAM authentication
+- Cognito user pools
+- Lambda authorizers
+
+## Client Authentication
+
+When using a reverse proxy with authentication:
+
+### Basic Authentication
+
+```bash
+# cURL with basic auth
+curl -u username:password \
+  "https://iped-api.example.com/search?q=pdf"
+```
+
+```python
+import requests
+from requests.auth import HTTPBasicAuth
+
+response = requests.get(
+    "https://iped-api.example.com/search",
+    auth=HTTPBasicAuth('username', 'password'),
+    params={'q': 'pdf'}
+)
+```
+
+```java
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.util.Base64;
+
+String auth = "username:password";
+String encodedAuth = Base64.getEncoder()
+    .encodeToString(auth.getBytes());
+
+HttpClient client = HttpClient.newHttpClient();
+HttpRequest request = HttpRequest.newBuilder()
+    .uri(URI.create("https://iped-api.example.com/search?q=pdf"))
+    .header("Authorization", "Basic " + encodedAuth)
+    .build();
+
+HttpResponse<String> response = client.send(
+    request, 
+    HttpResponse.BodyHandlers.ofString()
+);
+```
+
+### Token-Based Authentication
+
+If using an API gateway with token auth:
+
+```bash
+# Bearer token
+curl -H "Authorization: Bearer YOUR_TOKEN" \
+  "https://iped-api.example.com/search?q=pdf"
+```
+
+```python
+import requests
+
+headers = {
+    'Authorization': 'Bearer YOUR_TOKEN'
+}
+
+response = requests.get(
+    "https://iped-api.example.com/search",
+    headers=headers,
+    params={'q': 'pdf'}
+)
+```
+
+## Network Isolation
+
+### Firewall Rules
+
+Restrict access to specific IP addresses:
+
+```bash
+# UFW (Ubuntu)
+sudo ufw allow from 192.168.1.0/24 to any port 8080
+sudo ufw deny 8080
+
+# iptables
+sudo iptables -A INPUT -p tcp --dport 8080 -s 192.168.1.0/24 -j ACCEPT
+sudo iptables -A INPUT -p tcp --dport 8080 -j DROP
+```
+
+### VPN Access
+
+Require VPN connection for API access:
+
+1. Set up VPN server (OpenVPN, WireGuard)
+2. Bind API to VPN interface:
+
+```bash
+java -jar iped.jar --webapi \
+  --host=10.8.0.1 \
+  --port=8080 \
+  --sources=/path/to/sources.json
+```
+
+## TLS/SSL Encryption
+
+While the Web API doesn't natively support TLS, use a reverse proxy for encryption:
+
+### Generate Self-Signed Certificate
+
+```bash
+openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+  -keyout /etc/ssl/private/iped-key.pem \
+  -out /etc/ssl/certs/iped-cert.pem
+```
+
+### Nginx TLS Configuration
+
+```nginx
+server {
+    listen 443 ssl http2;
+    server_name iped-api.example.com;
+    
+    ssl_certificate /etc/ssl/certs/iped-cert.pem;
+    ssl_certificate_key /etc/ssl/private/iped-key.pem;
+    
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers HIGH:!aNULL:!MD5;
+    ssl_prefer_server_ciphers on;
+    
+    location / {
+        proxy_pass http://localhost:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-Proto https;
+    }
+}
+```
+
+## Rate Limiting
+
+Protect against abuse with rate limiting:
+
+### Nginx Rate Limiting
+
+```nginx
+http {
+    limit_req_zone $binary_remote_addr zone=api_limit:10m rate=10r/s;
+    
+    server {
+        location / {
+            limit_req zone=api_limit burst=20 nodelay;
+            proxy_pass http://localhost:8080;
+        }
+    }
+}
+```
+
+### Application-Level Rate Limiting
+
+Implement in your client application:
+
+```python
+import time
+from datetime import datetime, timedelta
+
+class RateLimiter:
+    def __init__(self, max_requests, time_window):
+        self.max_requests = max_requests
+        self.time_window = time_window
+        self.requests = []
+    
+    def allow_request(self):
+        now = datetime.now()
+        # Remove old requests
+        self.requests = [r for r in self.requests 
+                        if now - r < self.time_window]
+        
+        if len(self.requests) < self.max_requests:
+            self.requests.append(now)
+            return True
+        return False
+
+limiter = RateLimiter(max_requests=100, time_window=timedelta(minutes=1))
+
+def api_call(url):
+    if limiter.allow_request():
+        return requests.get(url)
+    else:
+        time.sleep(1)
+        return api_call(url)
+```
+
+## Audit Logging
+
+Log all API access for security auditing:
+
+### Nginx Access Logs
+
+```nginx
+http {
+    log_format api_access '$remote_addr - $remote_user [$time_local] '
+                         '"$request" $status $body_bytes_sent '
+                         '"$http_user_agent" $request_time';
+    
+    access_log /var/log/nginx/iped-api-access.log api_access;
+}
+```
+
+### Application-Level Logging
+
+Log from your application:
+
+```python
+import logging
+
+logger = logging.getLogger('iped_api_client')
+logger.setLevel(logging.INFO)
+
+handler = logging.FileHandler('iped_api_audit.log')
+formatter = logging.Formatter(
+    '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+handler.setFormatter(formatter)
+logger.addHandler(handler)
+
+# Log API calls
+logger.info(f"API call: GET /search?q={query} - User: {username}")
+response = requests.get(url, auth=auth)
+logger.info(f"Response: {response.status_code} - Items: {len(response.json())}")
+```
+
+## Security Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Network Isolation" icon="shield">
+    Deploy API on isolated network segment accessible only to authorized systems
+  </Card>
+  
+  <Card title="TLS Encryption" icon="lock">
+    Always use HTTPS/TLS in production via reverse proxy
+  </Card>
+  
+  <Card title="Authentication" icon="key">
+    Implement authentication via reverse proxy or API gateway
+  </Card>
+  
+  <Card title="Audit Logging" icon="file-lines">
+    Log all API access for security monitoring and compliance
+  </Card>
+</CardGroup>
+
+<Warning>
+  **Production Deployments**: Never expose the IPED Web API directly to the internet without authentication and encryption.
+</Warning>
+
+<Tip>
+  **Defense in Depth**: Use multiple security layers: network isolation, authentication, encryption, and rate limiting.
+</Tip>
+
+## Future Enhancements
+
+The IPED project may add native authentication in future versions. Planned features include:
+
+- JWT token-based authentication
+- Role-based access control (RBAC)
+- API key management
+- OAuth2 integration
+- Audit logging
+
+## See Also
+
+- [Web API Endpoints](/api/web/endpoints) - Available API endpoints
+- [Web API Examples](/api/web/examples) - Complete integration examples

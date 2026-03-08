@@ -1,0 +1,698 @@
+---
+title: Web API Examples
+description: Complete integration examples for IPED Web API
+---
+
+Practical examples demonstrating how to integrate with the IPED Web API using various programming languages and tools.
+
+## Setup
+
+Start the IPED Web API server:
+
+```bash
+java -jar iped.jar --webapi \
+  --host=localhost \
+  --port=8080 \
+  --sources=sources.json
+```
+
+Create `sources.json`:
+
+```json
+[
+  {
+    "id": "case1",
+    "path": "/data/iped-cases/case-2024-001"
+  }
+]
+```
+
+## Python Examples
+
+### Basic Search and Download
+
+```python
+import requests
+import os
+
+class IPEDClient:
+    def __init__(self, base_url="http://localhost:8080"):
+        self.base_url = base_url
+    
+    def search(self, query, source_id=None):
+        """Search for items"""
+        params = {'q': query}
+        if source_id:
+            params['sourceID'] = source_id
+        
+        response = requests.get(
+            f"{self.base_url}/search",
+            params=params
+        )
+        response.raise_for_status()
+        return response.json()['docs']
+    
+    def get_properties(self, source_id, item_id):
+        """Get item properties"""
+        response = requests.get(
+            f"{self.base_url}/sources/{source_id}/docs/{item_id}"
+        )
+        response.raise_for_status()
+        return response.json()
+    
+    def download_content(self, source_id, item_id, output_path):
+        """Download item content"""
+        response = requests.get(
+            f"{self.base_url}/sources/{source_id}/docs/{item_id}/content",
+            stream=True
+        )
+        response.raise_for_status()
+        
+        with open(output_path, 'wb') as f:
+            for chunk in response.iter_content(chunk_size=8192):
+                f.write(chunk)
+    
+    def get_text(self, source_id, item_id):
+        """Get extracted text"""
+        response = requests.get(
+            f"{self.base_url}/sources/{source_id}/docs/{item_id}/text"
+        )
+        response.raise_for_status()
+        return response.text
+
+# Usage
+client = IPEDClient()
+
+# Search for PDFs
+results = client.search("type:pdf")
+print(f"Found {len(results)} PDF documents")
+
+# Get properties and download first result
+if results:
+    doc = results[0]
+    props = client.get_properties(doc['source'], doc['id'])
+    
+    filename = props['properties']['name'][0]
+    print(f"Downloading: {filename}")
+    
+    client.download_content(doc['source'], doc['id'], filename)
+    print(f"Downloaded to: {filename}")
+```
+
+### Advanced Search with Filtering
+
+```python
+import requests
+from datetime import datetime
+import json
+
+class AdvancedIPEDClient:
+    def __init__(self, base_url="http://localhost:8080"):
+        self.base_url = base_url
+        self.session = requests.Session()
+    
+    def search_with_filters(self, query, min_size=None, max_size=None, 
+                           file_types=None, categories=None):
+        """Search with additional filters"""
+        query_parts = [query] if query else []
+        
+        # Add size filters
+        if min_size is not None:
+            query_parts.append(f"length:[{min_size} TO *]")
+        if max_size is not None:
+            query_parts.append(f"length:[* TO {max_size}]")
+        
+        # Add file type filter
+        if file_types:
+            type_query = " OR ".join([f"type:{t}" for t in file_types])
+            query_parts.append(f"({type_query})")
+        
+        # Add category filter
+        if categories:
+            cat_query = " OR ".join([f"category:{c}" for c in categories])
+            query_parts.append(f"({cat_query})")
+        
+        final_query = " AND ".join(query_parts)
+        
+        response = self.session.get(
+            f"{self.base_url}/search",
+            params={'q': final_query}
+        )
+        response.raise_for_status()
+        return response.json()['docs']
+    
+    def get_document_details(self, docs):
+        """Get detailed properties for multiple documents"""
+        details = []
+        
+        for doc in docs:
+            try:
+                response = self.session.get(
+                    f"{self.base_url}/sources/{doc['source']}/docs/{doc['id']}"
+                )
+                response.raise_for_status()
+                details.append(response.json())
+            except requests.RequestException as e:
+                print(f"Error fetching doc {doc['id']}: {e}")
+        
+        return details
+    
+    def export_results_to_csv(self, docs, output_file):
+        """Export search results to CSV"""
+        import csv
+        
+        details = self.get_document_details(docs)
+        
+        with open(output_file, 'w', newline='', encoding='utf-8') as f:
+            writer = csv.writer(f)
+            writer.writerow(['Source', 'ID', 'Name', 'Type', 'Size', 'Hash', 'Path'])
+            
+            for detail in details:
+                props = detail['properties']
+                writer.writerow([
+                    detail['source'],
+                    detail['id'],
+                    props.get('name', [''])[0],
+                    props.get('type', [''])[0],
+                    props.get('length', [''])[0],
+                    props.get('hash', [''])[0],
+                    props.get('path', [''])[0]
+                ])
+
+# Usage
+client = AdvancedIPEDClient()
+
+# Search large PDFs and Word documents
+results = client.search_with_filters(
+    query="content:confidential",
+    min_size=1000000,  # > 1MB
+    file_types=['pdf', 'doc', 'docx']
+)
+
+print(f"Found {len(results)} large documents with 'confidential'")
+
+# Export to CSV
+client.export_results_to_csv(results, 'confidential_docs.csv')
+print("Exported to confidential_docs.csv")
+```
+
+### Bookmark Management
+
+```python
+import requests
+
+class BookmarkManager:
+    def __init__(self, base_url="http://localhost:8080"):
+        self.base_url = base_url
+    
+    def list_bookmarks(self):
+        """List all bookmarks"""
+        response = requests.get(f"{self.base_url}/bookmarks")
+        response.raise_for_status()
+        return response.json()['data']
+    
+    def create_bookmark(self, name):
+        """Create a new bookmark"""
+        response = requests.post(f"{self.base_url}/bookmarks/{name}")
+        response.raise_for_status()
+    
+    def add_to_bookmark(self, bookmark_name, docs):
+        """Add documents to bookmark"""
+        response = requests.put(
+            f"{self.base_url}/bookmarks/{bookmark_name}/add",
+            json=docs
+        )
+        response.raise_for_status()
+    
+    def get_bookmark_items(self, bookmark_name):
+        """Get all items in a bookmark"""
+        response = requests.get(
+            f"{self.base_url}/bookmarks/{bookmark_name}"
+        )
+        response.raise_for_status()
+        return response.json()['docs']
+    
+    def remove_from_bookmark(self, bookmark_name, docs):
+        """Remove documents from bookmark"""
+        response = requests.put(
+            f"{self.base_url}/bookmarks/{bookmark_name}/remove",
+            json=docs
+        )
+        response.raise_for_status()
+    
+    def delete_bookmark(self, bookmark_name):
+        """Delete a bookmark"""
+        response = requests.delete(
+            f"{self.base_url}/bookmarks/{bookmark_name}"
+        )
+        response.raise_for_status()
+    
+    def rename_bookmark(self, old_name, new_name):
+        """Rename a bookmark"""
+        response = requests.put(
+            f"{self.base_url}/bookmarks/{old_name}/rename/{new_name}"
+        )
+        response.raise_for_status()
+
+# Usage
+bm = BookmarkManager()
+
+# Create bookmark for suspicious files
+bm.create_bookmark("suspicious")
+
+# Search and tag suspicious executables
+client = IPEDClient()
+results = client.search("type:exe AND (content:password OR content:encrypted)")
+
+if results:
+    print(f"Found {len(results)} suspicious executables")
+    bm.add_to_bookmark("suspicious", results)
+    print("Added to 'suspicious' bookmark")
+
+# List bookmarks
+bookmarks = bm.list_bookmarks()
+print(f"Available bookmarks: {', '.join(bookmarks)}")
+```
+
+## JavaScript/Node.js Examples
+
+### Basic Client
+
+```javascript
+const axios = require('axios');
+const fs = require('fs');
+const path = require('path');
+
+class IPEDClient {
+  constructor(baseURL = 'http://localhost:8080') {
+    this.client = axios.create({ baseURL });
+  }
+
+  async search(query, sourceID = null) {
+    const params = { q: query };
+    if (sourceID) params.sourceID = sourceID;
+    
+    const response = await this.client.get('/search', { params });
+    return response.data.docs;
+  }
+
+  async getProperties(sourceID, itemID) {
+    const response = await this.client.get(
+      `/sources/${sourceID}/docs/${itemID}`
+    );
+    return response.data;
+  }
+
+  async downloadContent(sourceID, itemID, outputPath) {
+    const response = await this.client.get(
+      `/sources/${sourceID}/docs/${itemID}/content`,
+      { responseType: 'stream' }
+    );
+    
+    const writer = fs.createWriteStream(outputPath);
+    response.data.pipe(writer);
+    
+    return new Promise((resolve, reject) => {
+      writer.on('finish', resolve);
+      writer.on('error', reject);
+    });
+  }
+
+  async getText(sourceID, itemID) {
+    const response = await this.client.get(
+      `/sources/${sourceID}/docs/${itemID}/text`
+    );
+    return response.data;
+  }
+}
+
+// Usage
+(async () => {
+  const client = new IPEDClient();
+  
+  // Search for images
+  const results = await client.search('category:images');
+  console.log(`Found ${results.length} images`);
+  
+  // Download first image
+  if (results.length > 0) {
+    const doc = results[0];
+    const props = await client.getProperties(doc.source, doc.id);
+    const filename = props.properties.name[0];
+    
+    await client.downloadContent(doc.source, doc.id, filename);
+    console.log(`Downloaded: ${filename}`);
+  }
+})();
+```
+
+### Express.js Proxy Server
+
+```javascript
+const express = require('express');
+const axios = require('axios');
+const app = express();
+
+const IPED_API = 'http://localhost:8080';
+
+app.use(express.json());
+
+// Search endpoint with caching
+const cache = new Map();
+
+app.get('/api/search', async (req, res) => {
+  try {
+    const { q, sourceID } = req.query;
+    const cacheKey = `${q}-${sourceID}`;
+    
+    // Check cache
+    if (cache.has(cacheKey)) {
+      return res.json(cache.get(cacheKey));
+    }
+    
+    // Query IPED
+    const response = await axios.get(`${IPED_API}/search`, {
+      params: { q, sourceID }
+    });
+    
+    // Cache for 5 minutes
+    cache.set(cacheKey, response.data);
+    setTimeout(() => cache.delete(cacheKey), 5 * 60 * 1000);
+    
+    res.json(response.data);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Document details with enrichment
+app.get('/api/documents/:source/:id', async (req, res) => {
+  try {
+    const { source, id } = req.params;
+    
+    const response = await axios.get(
+      `${IPED_API}/sources/${source}/docs/${id}`
+    );
+    
+    const doc = response.data;
+    
+    // Add enrichment
+    doc.enriched = {
+      sizeReadable: formatBytes(doc.properties.length[0]),
+      hasBookmarks: doc.bookmarks.length > 0,
+      isSelected: doc.selected
+    };
+    
+    res.json(doc);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+function formatBytes(bytes) {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+}
+
+app.listen(3000, () => {
+  console.log('Proxy server running on http://localhost:3000');
+});
+```
+
+## Java Examples
+
+### Complete Client Implementation
+
+```java
+import java.net.URI;
+import java.net.URLEncoder;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.List;
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonArray;
+
+public class IPEDWebClient {
+    
+    private final String baseUrl;
+    private final HttpClient client;
+    private final Gson gson;
+    
+    public IPEDWebClient(String baseUrl) {
+        this.baseUrl = baseUrl;
+        this.client = HttpClient.newHttpClient();
+        this.gson = new Gson();
+    }
+    
+    public List<DocRef> search(String query) throws Exception {
+        return search(query, null);
+    }
+    
+    public List<DocRef> search(String query, String sourceID) throws Exception {
+        String encodedQuery = URLEncoder.encode(query, StandardCharsets.UTF_8);
+        String url = baseUrl + "/search?q=" + encodedQuery;
+        
+        if (sourceID != null) {
+            url += "&sourceID=" + sourceID;
+        }
+        
+        HttpRequest request = HttpRequest.newBuilder()
+            .uri(URI.create(url))
+            .GET()
+            .build();
+        
+        HttpResponse<String> response = client.send(
+            request,
+            HttpResponse.BodyHandlers.ofString()
+        );
+        
+        JsonObject json = gson.fromJson(response.body(), JsonObject.class);
+        JsonArray docs = json.getAsJsonArray("docs");
+        
+        return gson.fromJson(docs, 
+            new com.google.gson.reflect.TypeToken<List<DocRef>>(){}.getType());
+    }
+    
+    public DocumentProperties getProperties(String sourceID, int itemID) 
+            throws Exception {
+        String url = String.format(
+            "%s/sources/%s/docs/%d",
+            baseUrl, sourceID, itemID
+        );
+        
+        HttpRequest request = HttpRequest.newBuilder()
+            .uri(URI.create(url))
+            .GET()
+            .build();
+        
+        HttpResponse<String> response = client.send(
+            request,
+            HttpResponse.BodyHandlers.ofString()
+        );
+        
+        return gson.fromJson(response.body(), DocumentProperties.class);
+    }
+    
+    public void downloadContent(String sourceID, int itemID, Path outputPath) 
+            throws Exception {
+        String url = String.format(
+            "%s/sources/%s/docs/%d/content",
+            baseUrl, sourceID, itemID
+        );
+        
+        HttpRequest request = HttpRequest.newBuilder()
+            .uri(URI.create(url))
+            .GET()
+            .build();
+        
+        HttpResponse<Path> response = client.send(
+            request,
+            HttpResponse.BodyHandlers.ofFile(outputPath)
+        );
+    }
+    
+    public String getText(String sourceID, int itemID) throws Exception {
+        String url = String.format(
+            "%s/sources/%s/docs/%d/text",
+            baseUrl, sourceID, itemID
+        );
+        
+        HttpRequest request = HttpRequest.newBuilder()
+            .uri(URI.create(url))
+            .GET()
+            .build();
+        
+        HttpResponse<String> response = client.send(
+            request,
+            HttpResponse.BodyHandlers.ofString()
+        );
+        
+        return response.body();
+    }
+    
+    // Data classes
+    public static class DocRef {
+        public String source;
+        public int id;
+    }
+    
+    public static class DocumentProperties {
+        public String source;
+        public int id;
+        public int luceneId;
+        public java.util.Map<String, String[]> properties;
+        public String[] bookmarks;
+        public boolean selected;
+    }
+    
+    // Usage example
+    public static void main(String[] args) throws Exception {
+        IPEDWebClient client = new IPEDWebClient("http://localhost:8080");
+        
+        // Search for PDFs
+        List<DocRef> results = client.search("type:pdf");
+        System.out.println("Found " + results.size() + " PDFs");
+        
+        // Get properties and download first result
+        if (!results.isEmpty()) {
+            DocRef doc = results.get(0);
+            DocumentProperties props = client.getProperties(
+                doc.source, doc.id
+            );
+            
+            String filename = props.properties.get("name")[0];
+            System.out.println("Downloading: " + filename);
+            
+            client.downloadContent(
+                doc.source, 
+                doc.id, 
+                Paths.get(filename)
+            );
+            
+            System.out.println("Downloaded to: " + filename);
+        }
+    }
+}
+```
+
+## Bash/cURL Examples
+
+### Batch Download Script
+
+```bash
+#!/bin/bash
+
+API_URL="http://localhost:8080"
+QUERY="$1"
+OUTPUT_DIR="$2"
+
+if [ -z "$QUERY" ] || [ -z "$OUTPUT_DIR" ]; then
+    echo "Usage: $0 <query> <output_dir>"
+    exit 1
+fi
+
+mkdir -p "$OUTPUT_DIR"
+
+# Search
+echo "Searching for: $QUERY"
+RESULTS=$(curl -s "${API_URL}/search?q=${QUERY}")
+
+# Parse and download each result
+echo "$RESULTS" | jq -r '.docs[] | "\(.source) \(.id)"' | while read source id; do
+    echo "Downloading item $id from $source..."
+    
+    # Get filename
+    PROPS=$(curl -s "${API_URL}/sources/${source}/docs/${id}")
+    FILENAME=$(echo "$PROPS" | jq -r '.properties.name[0]')
+    
+    # Download content
+    curl -s "${API_URL}/sources/${source}/docs/${id}/content" \
+        -o "${OUTPUT_DIR}/${FILENAME}"
+    
+    echo "  Saved: ${FILENAME}"
+done
+
+echo "Download complete!"
+```
+
+### Report Generation Script
+
+```bash
+#!/bin/bash
+
+API_URL="http://localhost:8080"
+QUERY="$1"
+REPORT_FILE="report.html"
+
+cat > "$REPORT_FILE" << EOF
+<!DOCTYPE html>
+<html>
+<head>
+    <title>IPED Search Report</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        table { border-collapse: collapse; width: 100%; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #4CAF50; color: white; }
+        tr:nth-child(even) { background-color: #f2f2f2; }
+    </style>
+</head>
+<body>
+    <h1>Search Results: $QUERY</h1>
+    <table>
+        <tr>
+            <th>Source</th>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Type</th>
+            <th>Size</th>
+            <th>Hash</th>
+        </tr>
+EOF
+
+# Search and build report
+curl -s "${API_URL}/search?q=${QUERY}" | \
+    jq -r '.docs[] | "\(.source) \(.id)"' | \
+    while read source id; do
+        PROPS=$(curl -s "${API_URL}/sources/${source}/docs/${id}")
+        
+        NAME=$(echo "$PROPS" | jq -r '.properties.name[0]')
+        TYPE=$(echo "$PROPS" | jq -r '.properties.type[0]')
+        SIZE=$(echo "$PROPS" | jq -r '.properties.length[0]')
+        HASH=$(echo "$PROPS" | jq -r '.properties.hash[0]')
+        
+        cat >> "$REPORT_FILE" << EOF
+        <tr>
+            <td>$source</td>
+            <td>$id</td>
+            <td>$NAME</td>
+            <td>$TYPE</td>
+            <td>$SIZE</td>
+            <td>$HASH</td>
+        </tr>
+EOF
+    done
+
+cat >> "$REPORT_FILE" << EOF
+    </table>
+</body>
+</html>
+EOF
+
+echo "Report generated: $REPORT_FILE"
+```
+
+## See Also
+
+- [Web API Endpoints](/api/web/endpoints) - Complete API reference
+- [Web API Authentication](/api/web/authentication) - Security setup
+- [Search API](/api/search-api) - Query syntax guide

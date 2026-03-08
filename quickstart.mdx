@@ -1,80 +1,627 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: Quick Start
+description: Process your first case with IPED
 ---
 
-## Get started in three steps
+## Overview
 
-Get your documentation site running locally and make your first customization.
-
-### Step 1: Set up your local environment
-
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
-
-### Step 2: Deploy your changes
-
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
-
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
-
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
-
-### Step 3: Go live
-
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
-
-## Next steps
-
-Now that you have your docs running, explore these key features:
-
-<CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
-</CardGroup>
+This guide walks you through processing a digital evidence case and analyzing the results with IPED's GUI interface.
 
 <Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
+Before proceeding, ensure IPED is [installed](/installation) and you have evidence to process (disk image, folder, or supported forensic format).
 </Note>
+
+## Basic Workflow
+
+<Steps>
+  <Step title="Process Evidence">
+    Run command-line processing to index and analyze the evidence
+  </Step>
+  <Step title="Analyze Results">
+    Open the generated case in IPED's analysis GUI
+  </Step>
+  <Step title="Search and Filter">
+    Use search, filters, and visualization tools to investigate
+  </Step>
+  <Step title="Tag and Export">
+    Create bookmarks and generate reports
+  </Step>
+</Steps>
+
+## Processing Your First Case
+
+### Command Syntax
+
+The basic command structure for processing evidence:
+
+```bash
+iped -d <input> -o <output> [options]
+```
+
+**Parameters:**
+- `-d, -data`: Input data source (required, can be used multiple times)
+- `-o, -output`: Output case folder (required)
+- `-profile`: Processing profile (optional)
+
+### Example 1: Process a Folder
+
+<CodeGroup>
+```bash Linux
+./iped.sh -d /evidence/suspect_laptop -o /cases/case001
+```
+
+```cmd Windows
+iped.bat -d D:\Evidence\suspect_laptop -o D:\Cases\case001
+```
+</CodeGroup>
+
+This command:
+1. Processes all files in `/evidence/suspect_laptop`
+2. Creates indexed case in `/cases/case001`
+3. Uses default forensic profile
+4. Opens processing GUI showing progress
+
+### Example 2: Process a Disk Image
+
+```bash
+# Process E01 forensic image
+./iped.sh -d /evidence/disk.E01 -o /cases/case002
+
+# Process raw DD image
+./iped.sh -d /evidence/disk.dd -o /cases/case003
+
+# Process multiple segments (automatically detected)
+./iped.sh -d /evidence/disk.001 -o /cases/case004
+```
+
+### Example 3: Use Processing Profile
+
+```bash
+# Fast triage profile (quick analysis)
+./iped.sh -d /evidence/usb_drive -o /cases/triage001 -profile triage
+
+# Complete forensic profile (default, most comprehensive)
+./iped.sh -d /evidence/disk.E01 -o /cases/forensic001 -profile forensic
+
+# Fast mode (preview only)
+./iped.sh -d /evidence/folder -o /cases/preview001 -profile fastmode
+```
+
+<Note>
+**Processing Profiles:**
+- `forensic`: Complete analysis (default) - enables all features
+- `triage`: Quick analysis - faster, essential features only
+- `fastmode`: Preview mode - minimal processing for quick review
+- `pedo`: CSAM-focused - optimized for child exploitation investigations
+- `blind`: Automatic extraction - for scripted/batch processing
+</Note>
+
+### Example 4: Multiple Evidence Sources
+
+```bash
+# Process multiple sources into one case
+./iped.sh \
+  -d /evidence/disk1.E01 \
+  -d /evidence/usb_drive \
+  -d /evidence/cloud_download \
+  -o /cases/multicase001
+```
+
+### Example 5: Command-Line Only (No GUI)
+
+```bash
+# Process without GUI (useful for servers/scripts)
+./iped.sh -d /evidence/data -o /cases/case005 --nogui
+```
+
+## Understanding Processing Output
+
+During processing, you'll see a GUI window (unless `--nogui` is used) displaying:
+
+<Frame>
+  <img src="https://github.com/sepinf-inc/IPED/assets/7276994/bf29b44a-a924-4c65-845c-6282a4b91861" alt="IPED Processing Window" />
+</Frame>
+
+**Key Metrics:**
+- **Items Discovered**: Total files and artifacts found
+- **Items Processed**: Number of items analyzed
+- **Processing Speed**: MB/s throughput
+- **Time Remaining**: Estimated completion time
+- **Current Task**: Active processing module
+
+### Processing Tasks
+
+IPED executes multiple analysis tasks in sequence:
+
+```java
+// Processing pipeline (from Main.java)
+manager = new Manager(dataSource, output, keywords);
+manager.process();
+
+// Tasks include:
+// - File signature analysis
+// - Hash computation (MD5, SHA-1, SHA-256)
+// - Container expansion (ZIP, RAR, PST, etc.)
+// - Text extraction and indexing
+// - Thumbnail generation
+// - Carving for deleted files
+// - Parser execution (emails, chats, browsers)
+// - Regex searches (emails, URLs, credit cards)
+// - And many more...
+```
+
+Typical processing tasks:
+1. **Signature Analysis**: Identify file types
+2. **Hash Calculation**: Compute file hashes
+3. **Expansion**: Extract archives and containers
+4. **Parsing**: Extract metadata and text
+5. **Indexing**: Build searchable index
+6. **Carving**: Recover deleted files
+7. **Analysis**: Run specialized detectors
+
+### Case Output Structure
+
+After processing, the output folder contains:
+
+```
+case001/
+├── index/                 # Lucene search index
+├── data/                  # Extracted files (if applicable)
+├── view/                  # Chat HTML views
+├── thumbs/                # Image thumbnails
+├── tools/                 # Case-specific tools
+├── indexador/             # Processing metadata
+├── palavras-chave.txt     # Extracted keywords
+├── Lista de Arquivos.csv  # File listing
+└── iped-process.log       # Processing log
+```
+
+## Opening the Analysis GUI
+
+After processing completes, open the case for analysis:
+
+<CodeGroup>
+```bash Linux
+./iped-search-app.sh /cases/case001
+```
+
+```cmd Windows
+iped-search-app.bat D:\Cases\case001
+```
+</CodeGroup>
+
+Alternatively, if processing GUI is still open, click **"Analyze Case"** button.
+
+### Analysis Interface Overview
+
+<Frame>
+  <img src="https://github.com/sepinf-inc/IPED/assets/7276994/5fca2b65-6763-4bc1-9284-604c8b325d54" alt="IPED Analysis Interface" />
+</Frame>
+
+The interface consists of several panels:
+
+1. **Search Bar** (Top): Full-text and advanced search
+2. **Filter Tree** (Left): Category and metadata filters
+3. **Results Table** (Center): File listing with metadata
+4. **Preview Pane** (Right): File content viewer
+5. **Gallery** (Bottom): Image/video thumbnail gallery
+6. **Tabs**: Evidence, Bookmarks, Duplicates, Timeline, Map, Graph
+
+## Basic Search and Analysis
+
+### Full-Text Search
+
+Search for text content across all indexed files:
+
+```
+# Simple search
+password
+
+# Phrase search
+"confidential document"
+
+# Boolean operators
+password AND (admin OR root)
+
+# Wildcard search
+pass*
+
+# Field-specific search
+name:report*.pdf
+email:example@domain.com
+hash:5d41402abc4b2a76b9719d911017c592
+```
+
+<Tip>
+Press **TAB** in the search box for property autocomplete.
+</Tip>
+
+### Filter by Category
+
+Click categories in the left filter tree:
+
+- **Documents**: Office files, PDFs, text files
+- **Images**: Photos, graphics, screenshots
+- **Videos**: Video files and frames
+- **Audio**: Music, recordings, voice notes
+- **Email**: Email messages and attachments
+- **Chats**: WhatsApp, Telegram, other messaging apps
+- **Databases**: SQLite, MySQL dumps, etc.
+- **Compressed**: Archives (ZIP, RAR, 7Z)
+- **Executables**: Programs and scripts
+
+### Property Filters
+
+Filter by metadata properties:
+
+```
+# Files larger than 10MB
+size > 10485760
+
+# Created in 2024
+created:[2024-01-01 TO 2024-12-31]
+
+# Images with high resolution
+image:width > 3000 AND image:height > 2000
+
+# Files by extension
+ext:docx OR ext:xlsx
+
+# Files with specific hash
+hash:*abc123*
+```
+
+### Advanced Features
+
+<AccordionGroup>
+  <Accordion title="Timeline Analysis">
+    View files and events on a timeline:
+    1. Click **Timeline** tab
+    2. Select event types (Created, Modified, Accessed)
+    3. Use chart to filter by date range
+    4. Analyze temporal patterns
+    
+    <Frame>
+      <img src="https://github.com/sepinf-inc/IPED/assets/7276994/011657e3-8ff2-4105-b3c2-116980772fc0" alt="Timeline View" />
+    </Frame>
+  </Accordion>
+  
+  <Accordion title="Geolocation Mapping">
+    Visualize GPS coordinates on a map:
+    1. Click **Map** tab
+    2. Items with GPS data appear as markers
+    3. Click markers to view associated files
+    4. Useful for photos, mobile data, navigation history
+    
+    <Frame>
+      <img src="https://github.com/sepinf-inc/IPED/assets/7276994/279b9280-3a72-484a-8aed-e4d015df196f" alt="Map View" />
+    </Frame>
+  </Accordion>
+  
+  <Accordion title="Communication Graph">
+    Analyze relationships in communications:
+    1. Click **Graph** tab
+    2. View connections between contacts
+    3. Filter by communication type (calls, SMS, email)
+    4. Identify key participants
+    
+    <Frame>
+      <img src="https://github.com/sepinf-inc/IPED/assets/7276994/8b164948-fa36-47b8-a249-f64547a36b28" alt="Graph View" />
+    </Frame>
+  </Accordion>
+  
+  <Accordion title="Similar Images">
+    Find visually similar images:
+    1. Right-click an image
+    2. Select **"Similar Images"**
+    3. Adjust similarity threshold
+    4. Review matches
+  </Accordion>
+  
+  <Accordion title="Duplicate Detection">
+    Find duplicate files by hash:
+    1. Click **Duplicates** tab
+    2. View files grouped by hash
+    3. Identify redundant data
+    4. Useful for deduplication
+  </Accordion>
+</AccordionGroup>
+
+## Creating Bookmarks
+
+Tag items of interest for reporting:
+
+<Steps>
+  <Step title="Select Items">
+    Check boxes next to relevant files in the results table
+  </Step>
+  
+  <Step title="Create Bookmark">
+    Right-click → **"Add to Bookmark"** → Enter bookmark name
+  </Step>
+  
+  <Step title="View Bookmarks">
+    Click **Bookmarks** tab to see all tagged items organized by bookmark
+  </Step>
+</Steps>
+
+**Keyboard Shortcuts:**
+- **CTRL + Click**: Multi-select items
+- **SHIFT + Click**: Select range
+- **CTRL + A**: Select all visible items
+- **Space**: Toggle selection
+
+## Generating Reports
+
+Export findings to HTML report:
+
+<Steps>
+  <Step title="Tag Items for Export">
+    Create bookmarks with items to include in report
+  </Step>
+  
+  <Step title="Generate Report">
+    **File** → **Generate Report** → Select bookmark(s) → Choose output folder
+  </Step>
+  
+  <Step title="Report Contents">
+    The report includes:
+    - HTML pages with file listings
+    - Thumbnails and previews
+    - Extracted file copies (optional)
+    - Metadata CSV files
+    - Portable viewer (optional)
+  </Step>
+</Steps>
+
+```bash
+# Generate report from command line
+./iped.sh -d /cases/case001.iped -o /reports/report001
+
+# The .iped file contains bookmarks to export
+```
+
+## Advanced Processing Options
+
+### Encryption and Passwords
+
+```bash
+# Provide password for encrypted images/volumes
+./iped.sh -d /evidence/encrypted.E01 -o /cases/case006 -p "MyPassword123"
+
+# Multiple passwords
+./iped.sh -d /evidence/disk.E01 -o /cases/case007 \
+  -p "password1" -p "password2" -p "password3"
+```
+
+### Timezone Configuration
+
+```bash
+# Specify timezone for FAT filesystems
+./iped.sh -d /evidence/usb.dd -o /cases/case008 -tz GMT-3
+```
+
+### Continue/Restart Processing
+
+```bash
+# Continue interrupted processing
+./iped.sh -d /evidence/data -o /cases/case009 --continue
+
+# Restart from beginning (discard previous)
+./iped.sh -d /evidence/data -o /cases/case009 --restart
+```
+
+### Append to Existing Case
+
+```bash
+# Add more evidence to existing case
+./iped.sh -d /evidence/new_data -o /cases/case001 --append
+```
+
+### Portable Cases
+
+```bash
+# Create portable case (relative paths, works on removable drives)
+./iped.sh -d /evidence/data -o /portable_cases/case010 --portable
+```
+
+## Configuration Files
+
+Customize processing behavior by editing files in `conf/` folder:
+
+### IPEDConfig.txt
+
+Main configuration file:
+
+```properties
+# Enable/disable features
+enableHash = true
+enableOCR = false
+enableCarving = false
+enableImageThumbs = true
+enableVideoThumbs = true
+enableRegexSearch = true
+enableGraphGeneration = true
+
+# Processing options
+processFileSignatures = true
+expandContainers = true
+processEmbeddedDisks = true
+indexFileContents = true
+
+# Performance
+entriesTest = true
+exportFileProps = true
+```
+
+### Processing Profiles
+
+Profiles are located in `conf/profiles/`:
+
+```bash
+conf/
+└── profiles/
+    ├── forensic/      # Complete analysis
+    ├── triage/        # Quick triage
+    ├── fastmode/      # Fast preview
+    ├── pedo/          # CSAM investigation
+    └── blind/         # Automated extraction
+```
+
+Each profile contains customized configuration files.
+
+## Performance Tips
+
+<CardGroup cols={2}>
+  <Card title="Use SSD Storage" icon="hard-drive">
+    Process cases on SSD drives for 3-5x speed improvement
+  </Card>
+  <Card title="Adjust Thread Count" icon="microchip">
+    Set `numThreads` in LocalConfig.txt to match CPU cores
+  </Card>
+  <Card title="Increase Memory" icon="memory">
+    Set `maxJavaMemory` for large cases (16GB+ for 1TB+ evidence)
+  </Card>
+  <Card title="Disable Unused Features" icon="toggle-off">
+    Turn off OCR, carving, or transcription if not needed
+  </Card>
+</CardGroup>
+
+### Memory Configuration
+
+Edit `conf/LocalConfig.txt`:
+
+```properties
+# Maximum heap memory in MB (default: auto-detect)
+maxJavaMemory = 16384
+
+# Processing threads (default: CPU cores)
+numThreads = 8
+
+# Image thumbnail readers (default: 1)
+numImageReaders = 2
+```
+
+## Common Use Cases
+
+<Tabs>
+  <Tab title="Mobile Device Analysis">
+    ```bash
+    # Process Android backup
+    ./iped.sh -d /evidence/android_backup -o /cases/mobile001 -profile forensic
+    
+    # Process iOS backup
+    ./iped.sh -d /evidence/ios_backup -o /cases/mobile002 -profile forensic
+    
+    # Process Cellebrite UFDR
+    ./iped.sh -d /evidence/extract.ufdr -o /cases/mobile003
+    ```
+    
+    Key features:
+    - WhatsApp chat parsing
+    - Telegram message extraction
+    - Browser history
+    - GPS location mapping
+    - Contact and call log analysis
+  </Tab>
+  
+  <Tab title="Email Investigation">
+    ```bash
+    # Process PST/OST files
+    ./iped.sh -d /evidence/mailbox.pst -o /cases/email001
+    
+    # Process MBOX
+    ./iped.sh -d /evidence/export.mbox -o /cases/email002
+    ```
+    
+    Capabilities:
+    - Full email indexing
+    - Attachment extraction
+    - Email header analysis
+    - Timeline of communications
+    - Sender/recipient graphs
+  </Tab>
+  
+  <Tab title="Internet Activity">
+    ```bash
+    # Analyze browser artifacts
+    ./iped.sh -d /evidence/user_profile -o /cases/browser001
+    ```
+    
+    Extracted artifacts:
+    - Chrome/Firefox/Edge history
+    - Downloads
+    - Cookies
+    - Cache files
+    - Form autofill data
+  </Tab>
+  
+  <Tab title="Disk Image Analysis">
+    ```bash
+    # Full disk forensics
+    ./iped.sh -d /evidence/hdd.E01 -o /cases/disk001 -profile forensic
+    
+    # Enable carving for deleted files
+    # Edit conf/IPEDConfig.txt: enableCarving = true
+    ./iped.sh -d /evidence/hdd.E01 -o /cases/disk002 -profile forensic
+    ```
+    
+    Features:
+    - File system analysis
+    - Deleted file recovery
+    - Registry parsing (Windows)
+    - Prefetch/LNK analysis
+    - Volume shadow copies
+  </Tab>
+</Tabs>
+
+## Getting Help
+
+### Command-Line Help
+
+```bash
+./iped.sh --help
+```
+
+Shows all available command-line options:
+- `-d, -data`: Input data source
+- `-o, -output`: Output folder
+- `-profile`: Processing profile
+- `-p, -password`: Passwords for encrypted sources
+- `-tz, -timezone`: Timezone for FAT devices
+- `--append`: Add to existing case
+- `--continue`: Resume processing
+- `--restart`: Restart from beginning
+- `--nogui`: No GUI mode
+- `--portable`: Portable case
+- And more...
+
+### Documentation and Resources
+
+<CardGroup cols={2}>
+  <Card title="User Manual" icon="book" href="https://github.com/sepinf-inc/IPED/wiki/User-Manual">
+    Comprehensive user guide on GitHub Wiki
+  </Card>
+  <Card title="Beginner's Guide" icon="graduation-cap" href="https://github.com/lfcnassif/IPED/wiki/Beginner's-Start-Guide">
+    Step-by-step introduction for new users
+  </Card>
+  <Card title="Troubleshooting" icon="wrench" href="https://github.com/sepinf-inc/IPED/wiki/Troubleshooting">
+    Common issues and solutions
+  </Card>
+  <Card title="GitHub Issues" icon="github" href="https://github.com/sepinf-inc/IPED/issues">
+    Report bugs and request features
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+Now that you've processed your first case, explore advanced features:
+
+- **OCR**: Enable optical character recognition for scanned documents
+- **Audio Transcription**: Automatically transcribe audio files
+- **Face Recognition**: Detect and search for faces in images
+- **Custom Parsers**: Add support for new file formats
+- **Python Scripting**: Extend IPED with custom analysis scripts
+- **Distributed Processing**: Use ElasticSearch and MinIO for large-scale cases
+
+Check the [Configuration Guide](/processing/configuration) and [Advanced Usage](/advanced/scripting) documentation for more details.

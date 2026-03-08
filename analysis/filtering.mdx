@@ -1,0 +1,545 @@
+---
+title: Filtering and Grouping
+description: Master IPED's powerful filtering, categorization, and grouping capabilities for targeted analysis
+icon: filter
+---
+
+IPED provides sophisticated filtering and grouping features that allow investigators to focus on specific subsets of evidence and discover patterns across millions of items.
+
+## Filter Types
+
+IPED supports multiple complementary filtering mechanisms:
+
+<CardGroup cols={2}>
+  <Card title="Query Filters" icon="magnifying-glass">
+    Lucene-based searches that filter by content and metadata
+  </Card>
+  
+  <Card title="Category Filters" icon="folder-tree">
+    Automatic file type categorization and hierarchical filtering
+  </Card>
+  
+  <Card title="Tree Filters" icon="sitemap">
+    File system structure-based filtering
+  </Card>
+  
+  <Card title="Bookmark Filters" icon="bookmark">
+    Filter by tagged evidence sets
+  </Card>
+  
+  <Card title="Column Filters" icon="table">
+    Quick filters on table column values
+  </Card>
+  
+  <Card title="Metadata Filters" icon="tags">
+    Dynamic filtering by property values
+  </Card>
+</CardGroup>
+
+## Filter Dropdown
+
+The main filter dropdown in the toolbar provides quick access to common filters:
+
+<Frame>
+  <img src="/images/filter-dropdown.png" alt="Filter Dropdown" />
+</Frame>
+
+### Built-in Filters
+
+<Tabs>
+  <Tab title="Status Filters">
+    - **No Filter**: Show all items
+    - **Checked**: Show only checked/marked items
+    - **Duplicates**: Hide duplicate files (by hash)
+  </Tab>
+  
+  <Tab title="Default Filters">
+    IPED includes predefined filters in `DefaultFilters.txt`:
+    
+    - **Images and Videos**: Multimedia files
+    - **Documents**: Office documents, PDFs, text files
+    - **Web Content**: HTML, browser cache, cookies
+    - **Compressed Files**: Archives and containers
+    - **Executables**: Programs and scripts
+    - **Encrypted Items**: Password-protected files
+    - **Deleted Items**: Recovered deleted files
+    - **Carved Items**: Files recovered from unallocated space
+  </Tab>
+  
+  <Tab title="Custom Filters">
+    User-created filters saved in:
+    - `~/.iped/ipedFilters.txt` (global)
+    - Case-specific filter configurations
+  </Tab>
+</Tabs>
+
+## Filter Manager
+
+Access via **Options** → **Filter Manager** to create and manage custom filters.
+
+### Creating Custom Filters
+
+<Steps>
+  <Step title="Open Filter Manager">
+    Click **Options** button → **Filter Manager**
+  </Step>
+  
+  <Step title="Click New">
+    Enter a descriptive name for your filter
+  </Step>
+  
+  <Step title="Enter Lucene Query">
+    Type the query expression in the text area:
+    ```
+    category:Images AND length:>1048576 AND modified:>2023-01-01
+    ```
+  </Step>
+  
+  <Step title="Save Filter">
+    Click **Save** to store the filter
+  </Step>
+  
+  <Step title="Apply Filter">
+    Select from the filter dropdown to apply
+  </Step>
+</Steps>
+
+### Filter Examples
+
+<AccordionGroup>
+  <Accordion title="Large Recent Files">
+    ```
+    length:>10485760 AND modified:[NOW-30DAYS TO NOW] AND NOT deleted:true
+    ```
+    Files larger than 10MB modified in the last 30 days, not deleted
+  </Accordion>
+  
+  <Accordion title="User Documents">
+    ```
+    category:Documents AND path:*Users* AND NOT name:~*
+    ```
+    Documents in user folders, excluding temporary files
+  </Accordion>
+  
+  <Accordion title="Suspicious Executables">
+    ```
+    (ext:exe OR ext:dll) AND (path:*AppData* OR path:*Temp*) AND NOT signatureValid:true
+    ```
+    Executables in temporary locations without valid signatures
+  </Accordion>
+  
+  <Accordion title="External Storage Evidence">
+    ```
+    path:*Removable* OR deviceName:"USB*" OR volumeLabel:*
+    ```
+    Files from removable media and external drives
+  </Accordion>
+  
+  <Accordion title="Encrypted Communications">
+    ```
+    category:"Instant Messages" AND (encrypted:true OR content:"end-to-end encryption")
+    ```
+    Encrypted chat messages
+  </Accordion>
+  
+  <Accordion title="Recently Accessed Images">
+    ```
+    category:Images AND accessed:[NOW-7DAYS TO NOW]
+    ```
+    Images accessed in the last week
+  </Accordion>
+</AccordionGroup>
+
+<Tip>
+  Test complex filters by entering them directly in the search box before saving as a custom filter.
+</Tip>
+
+## Category Filtering
+
+The Categories tree provides automatic file type classification:
+
+### Category Hierarchy
+
+IPED organizes files into hierarchical categories:
+
+```
+Documents
+├─ Office Documents
+│  ├─ Word Documents
+│  ├─ Excel Spreadsheets
+│  └─ PowerPoint Presentations
+├─ PDF Files
+├─ Text Files
+└─ E-Books
+
+Multimedia
+├─ Images
+│  ├─ JPEG Images
+│  ├─ PNG Images
+│  └─ RAW Images
+├─ Videos
+├─ Audio
+└─ 3D Models
+
+Communications
+├─ Email
+├─ Instant Messages
+│  ├─ WhatsApp
+│  ├─ Telegram
+│  └─ Skype
+└─ Contact Lists
+
+System Files
+├─ Windows Registry
+├─ Logs
+├─ Databases
+└─ Shortcuts
+```
+
+### Using Categories
+
+<Steps>
+  <Step title="Expand Category Tree">
+    Click the **Categories** tab in the navigation panel
+  </Step>
+  
+  <Step title="Select Category">
+    Click any category to filter results
+  </Step>
+  
+  <Step title="View Results">
+    Results table updates to show only items in that category
+  </Step>
+  
+  <Step title="Clear Filter">
+    Click the **Clear Filters** button or select root node
+  </Step>
+</Steps>
+
+<Info>
+  Selecting a parent category automatically includes all subcategories in the filter.
+</Info>
+
+### Custom Categories
+
+Categories are defined in configuration files and can be customized:
+
+- Based on MIME types, extensions, and signatures
+- Support for custom detection rules
+- Scriptable category assignment
+
+## Duplicate Filtering
+
+Automatic hash-based duplicate detection:
+
+### Enabling Duplicate Filter
+
+1. Check the **Filter Duplicates** checkbox in the toolbar
+2. Results automatically hide duplicate files (same hash)
+3. One representative from each hash group is shown
+
+### Viewing Duplicates
+
+To see all duplicates of a file:
+
+1. Select an item in the results table
+2. Check the **Duplicates** tab in the detail panel
+3. All files with matching hashes are listed
+
+<Note>
+  Duplicate detection uses MD5, SHA-1, or SHA-256 hashes computed during processing.
+</Note>
+
+## Evidence Tree Filtering
+
+Filter by file system location:
+
+### Recursive Listing
+
+- **Enabled** (default): Selecting a folder shows all descendant files
+- **Disabled**: Shows only direct children of selected folder
+
+Toggle via checkbox above the evidence tree.
+
+### Path-Based Filtering
+
+```
+path:"C:\Users\John\Documents\*"
+path:*AppData*
+parentPath:"/home/user/Downloads"
+```
+
+## Column Header Filtering
+
+Quick filtering directly from table column headers:
+
+<Steps>
+  <Step title="Right-click Column Header">
+    Right-click any column header in the results table
+  </Step>
+  
+  <Step title="Select Filter Option">
+    - **Filter by Value**: Enter specific value
+    - **Filter by Range**: Enter min/max values
+    - **Filter Unique**: Show only unique values
+    - **Clear Filter**: Remove column filter
+  </Step>
+  
+  <Step title="View Filtered Results">
+    Table updates to show matching items
+  </Step>
+</Steps>
+
+<Info>
+  Multiple column filters can be applied simultaneously and are combined with AND logic.
+</Info>
+
+## Applied Filters Panel
+
+The **Applied Filters** panel shows all active filters:
+
+<Tabs>
+  <Tab title="Filter Types Display">
+    - **Query Filters**: Current search query
+    - **Category Filters**: Selected categories
+    - **Tree Filters**: Selected evidence paths
+    - **Bookmark Filters**: Selected bookmark groups
+    - **Column Filters**: Active column filters
+    - **Similar Item Filters**: Similar search results
+  </Tab>
+  
+  <Tab title="Filter Management">
+    - View all active filters in one place
+    - Click any filter to modify or remove
+    - See filter combinations and logic
+    - Clear individual or all filters
+  </Tab>
+</Tabs>
+
+## Clear All Filters
+
+The **Clear Filters** button (⊗ icon) in the toolbar removes all active filters:
+
+- Resets to showing all items
+- Clears search query
+- Resets category selection
+- Removes column filters
+- Clears bookmark filters
+
+<Warning>
+  Clearing filters does not affect checked/bookmarked items, only the current view.
+</Warning>
+
+## Grouping and Clustering
+
+IPED supports powerful grouping based on any metadata field:
+
+### File Grouping
+
+Group items by common properties:
+
+**Available via Options → Group By:**
+
+<CardGroup cols={2}>
+  <Card title="By Hash" icon="hashtag">
+    Group duplicate files together
+  </Card>
+  
+  <Card title="By Category" icon="folder">
+    Organize by file type
+  </Card>
+  
+  <Card title="By Extension" icon="file">
+    Group by file extension
+  </Card>
+  
+  <Card title="By Parent" icon="sitemap">
+    Group by container file
+  </Card>
+  
+  <Card title="By Author" icon="user">
+    Group by document author
+  </Card>
+  
+  <Card title="By Date" icon="calendar">
+    Group by date ranges
+  </Card>
+  
+  <Card title="Custom Metadata" icon="tags">
+    Group by any indexed field
+  </Card>
+</CardGroup>
+
+### Timeline Grouping
+
+View items chronologically:
+
+1. Enable **Timeline View** (clock icon button)
+2. Items grouped by timestamp
+3. Chart view shows temporal distribution
+4. Filter by date ranges
+
+## Metadata Panel Filtering
+
+The Metadata panel provides dynamic filtering:
+
+### Interactive Filtering
+
+1. Select an item to view its metadata
+2. Click any metadata value
+3. Filter to show items with matching metadata
+4. Combine with other active filters
+
+### Metadata Value Statistics
+
+View distribution of metadata values:
+
+- Count of items per value
+- Percentage breakdown
+- Click to filter by value
+
+## AI-Generated Filters
+
+IPED can generate filters based on AI analysis results:
+
+### Face Recognition Filters
+
+- **Files with Faces**: Images containing detected faces
+- **Files with Child Faces**: Age estimation for child protection
+- **Face Clusters**: Group by similar faces
+
+### Content Classification
+
+- **Nudity Detection**: Adult content filters
+- **Object Detection**: Filter by detected objects
+- **Scene Classification**: Group by image content
+
+<Note>
+  AI filters require corresponding features to be enabled during case processing.
+</Note>
+
+## Combining Filters
+
+Filters work together using AND logic:
+
+<Steps>
+  <Step title="Apply First Filter">
+    Select a category, e.g., "Images"
+  </Step>
+  
+  <Step title="Add Search Query">
+    Enter search term: `vacation`
+  </Step>
+  
+  <Step title="Apply Additional Filter">
+    Select from filter dropdown: "Recent Files"
+  </Step>
+  
+  <Step title="View Combined Results">
+    Only items matching ALL filters are shown
+  </Step>
+</Steps>
+
+**Example Combined Filter:**
+- Category: Images
+- Search: vacation
+- Custom Filter: Recent Files (modified in last 30 days)
+- Result: Recent image files containing the word "vacation"
+
+## Filter Performance
+
+### Optimization Tips
+
+<CardGroup cols={2}>
+  <Card title="Filter Order" icon="arrow-down-1-9">
+    Apply most restrictive filters first to reduce result set size
+  </Card>
+  
+  <Card title="Index Usage" icon="database">
+    Filters use Lucene index for fast execution even on large cases
+  </Card>
+  
+  <Card title="Cached Results" icon="bolt">
+    Repeatedly used filters benefit from result caching
+  </Card>
+  
+  <Card title="Complex Queries" icon="code">
+    Break down very complex filters into multiple steps
+  </Card>
+</CardGroup>
+
+### Bitmap Filtering
+
+IPED uses efficient bitmap-based filtering:
+
+- Query results stored as compressed bitmaps
+- Fast intersection/union operations
+- Low memory overhead
+- Scales to millions of items
+
+## Export Filtered Results
+
+Export current filtered result set:
+
+1. Apply desired filters
+2. **Options** → **Export**
+3. Choose format:
+   - CSV report
+   - HTML report
+   - ZIP archive with files
+4. Only filtered items are exported
+
+<Tip>
+  Check items before export to include only specific files from the filtered set.
+</Tip>
+
+## Filter Use Cases
+
+<AccordionGroup>
+  <Accordion title="Timeline Analysis">
+    1. Filter by date range
+    2. Enable timeline view
+    3. Examine temporal patterns
+    4. Correlate events across evidence
+  </Accordion>
+  
+  <Accordion title="User Activity Profiling">
+    1. Filter by user path (e.g., `/Users/john/`)
+    2. Group by document type
+    3. Examine recently accessed files
+    4. Identify user-specific artifacts
+  </Accordion>
+  
+  <Accordion title="External Media Investigation">
+    1. Filter by volume label or device name
+    2. Examine file timestamps
+    3. Look for copied files (duplicates)
+    4. Trace data exfiltration
+  </Accordion>
+  
+  <Accordion title="Malware Analysis">
+    1. Filter suspicious executables
+    2. Check code signing status
+    3. Examine suspicious paths
+    4. Correlate with timeline events
+  </Accordion>
+  
+  <Accordion title="Data Recovery">
+    1. Filter deleted:true
+    2. Add carved:true
+    3. Filter by category (e.g., Images)
+    4. Examine recovered artifacts
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Searching" icon="magnifying-glass" href="./searching">
+    Master advanced search techniques
+  </Card>
+  
+  <Card title="Bookmarks" icon="bookmark" href="./bookmarks">
+    Organize filtered results with bookmarks
+  </Card>
+</CardGroup>

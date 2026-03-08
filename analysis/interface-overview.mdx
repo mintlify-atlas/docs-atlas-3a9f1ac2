@@ -1,0 +1,282 @@
+---
+title: Interface Overview
+description: Comprehensive guide to IPED's integrated analysis interface
+icon: desktop
+---
+
+IPED features a powerful, integrated analysis GUI designed for efficient digital forensics investigation. The interface is built to handle cases with millions of items while providing intuitive access to all analysis features.
+
+## Main Window Layout
+
+The IPED interface uses a docking framework with customizable panels that can be arranged, resized, and minimized based on your workflow preferences.
+
+<Frame>
+  <img src="/images/analysis-interface.png" alt="IPED Analysis Interface" />
+</Frame>
+
+### Key Interface Components
+
+<CardGroup cols={2}>
+  <Card title="Navigation Panel" icon="folder-tree">
+    Browse case evidence by:
+    - File system structure
+    - Categories (file types)
+    - Bookmarks and tags
+    - AI-generated filters
+  </Card>
+  
+  <Card title="Results Area" icon="table">
+    View search results in:
+    - Table view with sortable columns
+    - Gallery view for visual items
+    - Timeline view for temporal analysis
+    - Graph view for relationship analysis
+  </Card>
+  
+  <Card title="Viewer Panel" icon="eye">
+    Preview evidence with built-in viewers:
+    - Hex viewer
+    - Text viewer with hit highlighting
+    - Image/video viewer
+    - HTML/email viewer
+    - Metadata viewer
+  </Card>
+  
+  <Card title="Detail Tables" icon="list">
+    Related item information:
+    - Subitems (extracted/carved items)
+    - Parent containers
+    - Duplicates by hash
+    - Cross-references
+  </Card>
+</CardGroup>
+
+## Top Toolbar
+
+The main toolbar provides quick access to essential functions:
+
+<Tabs>
+  <Tab title="Search Controls">
+    - **Search Box**: Enter Lucene queries, regex patterns, or metadata searches
+    - **Search Button**: Execute the current query
+    - **Filter Dropdown**: Select predefined filters or manage custom filters
+    - **Filter Duplicates**: Toggle automatic hash-based duplicate filtering
+  </Tab>
+  
+  <Tab title="Options">
+    - **Options Button**: Access application settings and preferences
+    - **Help Button**: Access documentation and help resources
+    - **Update Button**: Refresh case data during live processing
+    - **Export to ZIP**: Export selected items (triage mode)
+  </Tab>
+  
+  <Tab title="Checkbox Counter">
+    Displays the number of items currently checked/marked for bookmarking
+  </Tab>
+</Tabs>
+
+## Navigation Trees
+
+### Evidence Tree
+
+Browse the original file system structure:
+
+- **Recursive Listing**: Toggle to show all descendants when selecting a folder
+- **Tree Nodes**: Represent evidence sources, disk images, and directory structure
+- **Icons**: Visual indicators for file types and status
+
+<Tip>
+  Right-click on any item in the tree for context-menu actions like opening in viewer, checking items recursively, or exporting.
+</Tip>
+
+### Categories Tree
+
+Files are automatically categorized by type and properties:
+
+```
+├─ Documents
+│  ├─ Office Documents
+│  ├─ PDF Files
+│  └─ Text Files
+├─ Multimedia
+│  ├─ Images
+│  ├─ Videos
+│  └─ Audio
+├─ Applications
+├─ Compressed Files
+└─ System Files
+```
+
+Categories support:
+- Hierarchical organization with parent/child relationships
+- Click to filter results to that category
+- Expandable to show subcategories
+
+### Bookmarks Tree
+
+Manage and organize tagged evidence:
+
+- **Custom bookmarks**: Create named bookmarks for evidence organization
+- **Color coding**: Assign colors to bookmark categories
+- **Comments**: Add notes to bookmark groups
+- **Keyboard shortcuts**: Assign hotkeys for quick bookmarking
+- **Counters**: See item counts per bookmark
+
+<Info>
+  Press **Ctrl+B** to open the Bookmarks Manager for creating and managing bookmark categories.
+</Info>
+
+## Results Views
+
+### Table View
+
+The default results table displays items with customizable columns:
+
+**Available Columns:**
+- Name, Path, Type, Size, Modified Date, Hash
+- Category, Deleted Status, Carved Status
+- Custom metadata fields
+- Score (for search relevance)
+
+**Table Features:**
+- **Column Sorting**: Click headers to sort (shift-click for multi-column)
+- **Column Filtering**: Right-click column headers for quick filters
+- **Column Selection**: Show/hide columns via Options menu
+- **Row Selection**: Single/multi-select for actions
+- **Context Menu**: Right-click for item-specific actions
+
+### Gallery View
+
+Visual grid display optimized for images and videos:
+
+- **Thumbnail Display**: Automatic thumbnail generation
+- **Video Frames**: Toggle between first frame and multiple frames
+- **Grid Size**: Adjustable thumbnail size (+ / - buttons)
+- **Filters**: Grayscale and blur filters (Ctrl+W / Ctrl+Q)
+- **Similar Search**: Find similar images or faces from gallery
+
+<CardGroup cols={2}>
+  <Card title="Gallery Shortcuts" icon="keyboard">
+    - **Ctrl+Q**: Toggle blur filter
+    - **Ctrl+W**: Toggle grayscale
+    - Arrow keys: Navigate thumbnails
+    - Space: Check/uncheck item
+  </Card>
+  
+  <Card title="Gallery Actions" icon="wand-magic-sparkles">
+    - Similar image search
+    - Similar face search
+    - Increase/decrease thumbnail size
+    - Toggle video frames mode
+  </Card>
+</CardGroup>
+
+### Timeline View
+
+Chronological analysis of events:
+
+- **Time-based sorting**: Items organized by timestamp metadata
+- **Event filtering**: Filter by date ranges and event types
+- **Visual timeline**: Chart view showing event distribution
+- **Multiple timestamps**: Modified, created, accessed dates
+
+<Info>
+  Enable timeline view using the clock icon button in the table toolbar.
+</Info>
+
+## Status Bar
+
+The bottom status bar displays:
+
+- Current operation status and progress
+- Total items in current result set
+- Selected/checked item counts
+- Case information and warnings
+
+## Customizing the Layout
+
+The docking framework allows extensive customization:
+
+1. **Drag tabs** to reposition panels
+2. **Stack tabs** by dragging one onto another
+3. **Minimize panels** to save screen space
+4. **Detach panels** to separate windows
+5. **Save layouts** for different analysis workflows
+
+<Warning>
+  Layout configurations are saved automatically. Use **Panels Layout** in the Options menu to reset to defaults if needed.
+</Warning>
+
+## Keyboard Shortcuts
+
+<AccordionGroup>
+  <Accordion title="Search and Navigation">
+    - **Ctrl+F**: Focus search box
+    - **Enter**: Execute search
+    - **Escape**: Clear search filters
+    - **Tab**: Navigate between panels
+  </Accordion>
+  
+  <Accordion title="Item Actions">
+    - **Space**: Check/uncheck selected items
+    - **R**: Check items recursively
+    - **P**: Select parent items
+    - **F**: Select referenced items
+    - **D**: Select items that reference selected
+    - **Ctrl+A**: Select all in current view
+  </Accordion>
+  
+  <Accordion title="Bookmarking">
+    - **Ctrl+B**: Open Bookmarks Manager
+    - **Ctrl+1-9**: Quick bookmark with assigned shortcuts
+    - **Alt+1-9**: Remove from bookmark (when shortcut assigned)
+  </Accordion>
+  
+  <Accordion title="View Controls">
+    - **Ctrl+Q**: Toggle blur filter (gallery/viewer)
+    - **Ctrl+W**: Toggle grayscale (gallery/viewer)
+    - **Arrow Keys**: Navigate items
+    - **Page Up/Down**: Scroll through results
+  </Accordion>
+</AccordionGroup>
+
+## Performance Considerations
+
+### Working with Large Cases
+
+IPED is optimized for cases with millions of items:
+
+- **Lazy Loading**: Results loaded on-demand
+- **Index-based**: Fast searches via Lucene indexing
+- **Efficient Caching**: Thumbnails and previews cached
+- **Portable Cases**: Can run from external drives
+
+<Tip>
+  For cases with 1M+ items, use specific searches and filters rather than browsing all items at once.
+</Tip>
+
+### Resource Management
+
+- **Memory Usage**: Automatically managed, adjust via Options if needed
+- **Disk Cache**: Thumbnails and temp files stored in case directory
+- **Multi-threading**: Parallel processing for responsiveness
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Searching" icon="magnifying-glass" href="./searching">
+    Learn advanced search techniques with Lucene queries and regex
+  </Card>
+  
+  <Card title="Filtering" icon="filter" href="./filtering">
+    Master filtering and grouping capabilities
+  </Card>
+  
+  <Card title="Built-in Viewers" icon="eye" href="./viewers">
+    Explore the integrated file viewers
+  </Card>
+  
+  <Card title="Bookmarks" icon="bookmark" href="./bookmarks">
+    Organize evidence with bookmarks and tags
+  </Card>
+</CardGroup>

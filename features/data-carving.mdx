@@ -1,0 +1,270 @@
+---
+title: Data Carving
+description: Advanced file carving engine in IPED for recovering deleted and fragmented files
+---
+
+IPED includes a powerful data carving engine that recovers deleted files, extracts embedded content, and processes unallocated space with support for over 40 file formats.
+
+## Overview
+
+Data carving identifies files based on their internal structure (file signatures) rather than file system metadata. This enables:
+
+- Recovery of deleted files from unallocated space
+- Extraction of embedded files from containers
+- Detection of files with wrong or missing extensions
+- Recovery from corrupted file systems
+
+## Supported File Formats
+
+IPED's carving engine supports 40+ formats through specialized carvers:
+
+### Images
+- JPEG, PNG, GIF, BMP, TIFF
+- RAW camera formats
+- WebP, ICO
+
+### Documents  
+- PDF documents
+- Microsoft Office (DOC, XLS, PPT)
+- OpenDocument formats
+- RTF, EML emails
+
+### Archives
+- ZIP, 7-Zip, RAR
+- GZIP, BZIP2
+- TAR archives
+
+### Multimedia
+- MP4, AVI, MOV, MKV
+- MP3, WAV, FLAC, Opus
+- 3GP mobile video
+
+### Databases
+- SQLite databases
+- Registry hives
+
+### P2P and Special
+- BitTorrent files
+- eMule/eDonkey
+- Resume.dat files
+
+### Geodata
+- GPX tracks
+- KML/KMZ files
+
+## Architecture
+
+The carving engine uses the Aho-Corasick algorithm for efficient multi-pattern matching:
+
+```java
+/**
+ * Data Carving Task using aho-corasick algorithm,
+ * which generates a state machine from search patterns.
+ * The algorithm is independent of the number of signatures,
+ * being proportional to input data volume and number of discovered patterns.
+ */
+public class CarverTask extends BaseCarveTask
+```
+
+### Efficiency
+
+- **Single pass scanning** - All signatures searched simultaneously
+- **Performance** - Takes less than 10% of total processing time
+- **Comprehensive** - Scans more than just unallocated space
+- **Scalable** - Performance independent of number of signatures
+
+## Configuration
+
+Carving is configured via `CarverConfig.xml`:
+
+```xml
+<carverconfig>
+    <carverTypes>
+        <carverType>
+            <name>PDF</name>
+            <signatures>
+                <headerSignature>%PDF-</headerSignature>
+                <footerSignature>%%EOF</footerSignature>
+            </signatures>
+            <minLength>100</minLength>
+            <maxLength>100000000</maxLength>
+            <mediaType>application/pdf</mediaType>
+        </carverType>
+    </carverTypes>
+</carverconfig>
+```
+
+### Carver Parameters
+
+- **name** - Unique identifier for the carver type
+- **headerSignature** - File header pattern (hex or ASCII)
+- **footerSignature** - File footer pattern (optional)
+- **minLength** - Minimum valid file size in bytes
+- **maxLength** - Maximum file size to prevent false positives
+- **mediaType** - MIME type for carved files
+- **carverClass** - Custom Java or JavaScript carver implementation
+
+## Specialized Carvers
+
+IPED includes specialized carvers for complex formats:
+
+### PDFCarver
+Handles complex PDF structure:
+- Supports linearized and standard PDFs
+- Validates internal structure
+- Recovers fragmented PDFs when possible
+
+### SQLiteCarver  
+Recovers SQLite databases:
+- Validates database header
+- Checks page structure integrity
+- Handles corrupted databases
+
+### ZIPCarver
+Extracts ZIP archives:
+- Locates central directory
+- Validates CRC checksums
+- Handles password-protected archives
+
+### MOVCarver & MatroskaCarver
+Recover video files:
+- Parse container structure
+- Locate media data atoms
+- Handle streaming formats
+
+### OLECarver
+Recovers Microsoft Office documents:
+- OLE2 compound file format
+- Legacy Office formats (DOC, XLS, PPT)
+- Outlook PST/OST files
+
+## JavaScript Carvers
+
+IPED supports custom carvers written in JavaScript:
+
+```javascript
+function carve(signature, offset, evidence) {
+    // Custom carving logic
+    var data = evidence.getBytes(offset, 1024);
+    
+    // Validate file structure
+    if (isValid(data)) {
+        var length = calculateLength(data);
+        return createCarvedItem(offset, length);
+    }
+    
+    return null;
+}
+```
+
+This allows:
+- Rapid prototyping of new carvers
+- Format-specific validation logic
+- No recompilation required
+
+## Carving Scope
+
+IPED carves from multiple sources:
+
+### Unallocated Space
+Primary target for deleted file recovery.
+
+### File Slack
+Data between logical file end and cluster boundary.
+
+### Known File Containers
+Embedded content in:
+- Documents
+- Archives  
+- Disk images
+- Memory dumps
+
+### Unknown File Types
+Files not recognized by signature analysis.
+
+## Corruption Handling
+
+The carving engine includes robust error handling:
+
+```java
+public static boolean ignoreCorrupted = true;
+```
+
+When `ignoreCorrupted` is enabled:
+- Validates carved file structure
+- Discards files failing validation
+- Reduces false positives
+- Configurable per investigation needs
+
+## LED Carving
+
+IPED implements LED (Longest Extent Detection) carving:
+
+- Groups related file fragments
+- Reconstructs fragmented files when possible
+- Improves recovery of large multimedia files
+- Implemented in `LedCarveTask.java`
+
+## Performance Optimization
+
+### Buffer Management
+Efficient memory usage:
+```java
+private byte[] buf = new byte[1024 * 1024]; // 1MB buffer
+```
+
+### State Machine
+Aho-Corasick provides:
+- O(n + m + z) complexity where:
+  - n = input length
+  - m = total pattern length  
+  - z = number of matches
+- Constant time per input character
+- Efficient for thousands of signatures
+
+### Parallel Processing
+Carving runs in parallel with other tasks:
+- Separate thread per item
+- No blocking of main pipeline
+- Utilizes multi-core processors
+
+## Integration with Processing
+
+Carved items are:
+- Added as child items of parent evidence
+- Fully indexed and searchable
+- Include parent relationship metadata
+- Available in result view and gallery
+- Can be bookmarked and exported
+
+## Use Cases
+
+### Deleted File Recovery
+Recover files deleted by user or malware.
+
+### Anti-Forensics Detection  
+Find files with manipulated extensions or metadata.
+
+### Steganography Investigation
+Extract hidden files embedded in images or documents.
+
+### Timeline Reconstruction
+Recover deleted communications and documents.
+
+### Malware Analysis
+Extract embedded payloads and resources.
+
+## Best Practices
+
+1. **Enable for unallocated space** - Set `addUnallocated=true` in FileSystemConfig
+2. **Adjust maxLength** - Based on expected file sizes in your case
+3. **Enable validation** - Use `ignoreCorrupted=true` to reduce false positives
+4. **Monitor performance** - Carving should use less than 10% of processing time
+5. **Review carved items** - Check for false positives in results
+
+## Limitations
+
+- Cannot recover overwritten data
+- Fragmented files may not recover completely
+- File without clear footer signatures harder to carve accurately
+- Performance depends on unallocated space size

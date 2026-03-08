@@ -1,0 +1,558 @@
+---
+title: Built-in Viewers
+description: Comprehensive guide to IPED's integrated file viewers for examining evidence
+icon: eye
+---
+
+IPED includes powerful built-in viewers for previewing and analyzing evidence without requiring external applications. All viewers support hit highlighting for search terms and provide quick access to file metadata.
+
+## Viewer Overview
+
+IPED's viewer architecture provides specialized viewers for different file types:
+
+<CardGroup cols={2}>
+  <Card title="Text Viewer" icon="file-lines">
+    Plain text, extracted content, hit highlighting
+  </Card>
+  
+  <Card title="Hex Viewer" icon="binary">
+    Raw binary data, hex editor functionality
+  </Card>
+  
+  <Card title="Metadata Viewer" icon="tags">
+    Technical properties, EXIF data, file attributes
+  </Card>
+  
+  <Card title="MultiViewer" icon="layer-group">
+    Format-specific viewers: images, videos, documents, HTML
+  </Card>
+</CardGroup>
+
+## Viewer Panel Layout
+
+Viewers are organized in dockable panels:
+
+<Frame>
+  <img src="/images/viewer-panels.png" alt="Viewer Panels" />
+</Frame>
+
+### Viewer Controls
+
+Each viewer panel includes toolbar buttons:
+
+<Tabs>
+  <Tab title="Navigation">
+    - **Previous Hit**: Jump to previous search match (Ctrl+↑)
+    - **Next Hit**: Jump to next search match (Ctrl+↓)
+    - **Pin Viewer**: Keep current file loaded when selecting other items
+  </Tab>
+  
+  <Tab title="Actions">
+    - **Search in Viewer**: Find text within current file (MultiViewer)
+    - **Copy Screen**: Copy visible content to clipboard
+    - **Export**: Save current view or extract file
+  </Tab>
+</Tabs>
+
+<Info>
+  Enable **Pin Viewer** to compare multiple files by switching between them without automatic updates.
+</Info>
+
+## Text Viewer
+
+The primary viewer for text content extracted from all file types.
+
+### Features
+
+<AccordionGroup>
+  <Accordion title="Content Display">
+    - Displays extracted text from any file format
+    - Syntax highlighting for source code
+    - Word wrap and formatting options
+    - Unicode support for multiple languages
+  </Accordion>
+  
+  <Accordion title="Search Hit Highlighting">
+    - Automatic highlighting of search terms
+    - Color-coded matches
+    - Jump between hits with toolbar buttons
+    - Context display around matches
+  </Accordion>
+  
+  <Accordion title="Text Selection">
+    - Select and copy text
+    - Search selected text
+    - Context menu actions
+  </Accordion>
+  
+  <Accordion title="Large File Handling">
+    - Efficient loading of multi-megabyte text files
+    - Pagination for very large documents
+    - Quick navigation to specific hits
+  </Accordion>
+</AccordionGroup>
+
+### Hits Table
+
+The **Hits** tab shows all search term matches in the current file:
+
+| Column | Description |
+|--------|-------------|
+| # | Hit number |
+| Context | Text excerpt around the match |
+
+**Usage:**
+- Click any row to jump to that hit in the text
+- Hits are ordered by position in file
+- Useful for quickly scanning match locations
+
+<Tip>
+  Use the hits table to quickly assess if a file contains relevant information before detailed review.
+</Tip>
+
+## Hex Viewer
+
+Low-level binary file viewer for examining raw data.
+
+### Interface Layout
+
+<Tabs>
+  <Tab title="Hex Display">
+    ```
+    Offset    00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F
+    
+    00000000  4D 5A 90 00 03 00 00 00 04 00 00 00 FF FF 00 00  MZ..............
+    00000010  B8 00 00 00 00 00 00 00 40 00 00 00 00 00 00 00  ........@.......
+    00000020  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
+    ```
+    
+    - **Offset**: Byte position in file
+    - **Hex Values**: 16 bytes per row
+    - **ASCII**: Printable character representation
+  </Tab>
+  
+  <Tab title="Features">
+    - **Search**: Find hex patterns or ASCII text
+    - **Go to Offset**: Jump to specific byte position
+    - **Copy**: Copy selected bytes as hex or text
+    - **Data Inspector**: Decode values as different types
+  </Tab>
+  
+  <Tab title="Hit Highlighting">
+    - Search term matches highlighted in hex view
+    - Navigate between hits
+    - View context in both hex and ASCII
+  </Tab>
+</Tabs>
+
+### Use Cases
+
+<CardGroup cols={2}>
+  <Card title="File Signature Analysis" icon="fingerprint">
+    Verify file headers and magic bytes
+  </Card>
+  
+  <Card title="Binary Data Examination" icon="microscope">
+    Analyze unknown or corrupted files
+  </Card>
+  
+  <Card title="Data Recovery" icon="life-ring">
+    Extract embedded data or examine carved files
+  </Card>
+  
+  <Card title="Malware Analysis" icon="bug">
+    Examine executable headers and structure
+  </Card>
+</CardGroup>
+
+<Warning>
+  The hex viewer loads files into memory. Very large files (>100MB) may take time to load.
+</Warning>
+
+## Metadata Viewer
+
+Displays comprehensive file properties and metadata.
+
+### Metadata Categories
+
+<Tabs>
+  <Tab title="Basic Properties">
+    - File name and path
+    - Size (bytes, KB, MB)
+    - Timestamps (created, modified, accessed)
+    - Hash values (MD5, SHA-1, SHA-256)
+    - File type and MIME type
+  </Tab>
+  
+  <Tab title="File System">
+    - Permissions and attributes
+    - Owner and group
+    - Deleted status
+    - Carved/recovered status
+    - Parent container
+  </Tab>
+  
+  <Tab title="Format-Specific">
+    **Documents:**
+    - Title, author, subject
+    - Creation application
+    - Page count, word count
+    - Last modified by
+    
+    **Images:**
+    - Dimensions (width × height)
+    - Color depth and format
+    - EXIF data (camera, GPS, etc.)
+    - Thumbnail embedded
+    
+    **Videos:**
+    - Duration and bitrate
+    - Codec information
+    - Frame rate and resolution
+    - Audio tracks
+  </Tab>
+  
+  <Tab title="Forensic Data">
+    - Evidence source
+    - Evidence path
+    - Lucene document ID
+    - Bookmark/tag status
+    - Categories assigned
+    - Duplicate information
+  </Tab>
+</Tabs>
+
+### Interactive Features
+
+- **Click Metadata Values**: Filter results by that value
+- **Copy Properties**: Right-click to copy specific fields
+- **Export Metadata**: Save to CSV or JSON
+
+<Info>
+  The metadata viewer is automatically updated when selecting different items.
+</Info>
+
+## Image Viewer
+
+Specialized viewer for image files with zoom and enhancement features.
+
+### Capabilities
+
+<AccordionGroup>
+  <Accordion title="Image Display">
+    - Support for hundreds of image formats
+    - Automatic sizing to fit panel
+    - High-quality rendering
+    - Rotation and flip controls
+  </Accordion>
+  
+  <Accordion title="Zoom Controls">
+    - Zoom in/out with buttons or mouse wheel
+    - Fit to window
+    - Actual size (100%)
+    - Pan with click-and-drag
+  </Accordion>
+  
+  <Accordion title="Filters">
+    - **Grayscale** (Ctrl+W): Convert to black and white
+    - **Blur Filter** (Ctrl+Q): Obscure sensitive content
+    - Filters apply in viewer without modifying original
+  </Accordion>
+  
+  <Accordion title="EXIF Display">
+    - Camera make and model
+    - GPS coordinates (if available)
+    - Capture date and settings
+    - Overlay on image or separate panel
+  </Accordion>
+</AccordionGroup>
+
+### Supported Formats
+
+- **Common**: JPEG, PNG, GIF, BMP, TIFF, WebP
+- **RAW**: CR2, NEF, ARW, DNG, RAF, ORF
+- **Advanced**: PSD, SVG, ICO, HEIC
+
+<Tip>
+  Use the image viewer's blur filter when reviewing potentially sensitive content in group settings.
+</Tip>
+
+## Gallery View
+
+Grid-based thumbnail view for browsing multiple images:
+
+### Gallery Features
+
+<Tabs>
+  <Tab title="Display Options">
+    - Adjustable thumbnail size (± buttons)
+    - Multi-column grid layout
+    - Video frame thumbnails
+    - Lazy loading for performance
+  </Tab>
+  
+  <Tab title="Filters">
+    - Global grayscale filter
+    - Global blur filter
+    - Applies to all thumbnails
+  </Tab>
+  
+  <Tab title="Selection">
+    - Click to select single image
+    - Shift-click for range selection
+    - Ctrl-click for multi-select
+    - Arrow keys for navigation
+  </Tab>
+  
+  <Tab title="Actions">
+    - Similar image search
+    - Similar face search
+    - Batch operations
+    - Quick preview
+  </Tab>
+</Tabs>
+
+<Info>
+  Toggle between **Table** and **Gallery** views using tabs at the top of the results panel.
+</Info>
+
+## Video Viewer
+
+Built-in video playback with frame extraction:
+
+### Video Controls
+
+- **Play/Pause**: Standard playback controls
+- **Seek**: Jump to specific timestamp
+- **Frame-by-Frame**: Step through video frame by frame
+- **Speed Control**: Adjust playback speed
+- **Volume**: Audio level control
+
+### Frame Extraction
+
+- Automatic thumbnail generation
+- Multiple frames extracted per video
+- View frames in gallery mode
+- Export specific frames
+
+### Supported Formats
+
+- MP4, AVI, MOV, MKV, WMV, FLV
+- MPEG-1, MPEG-2, MPEG-4
+- H.264, H.265 codecs
+
+<Note>
+  Video frames are extracted during processing and cached for quick access.
+</Note>
+
+## HTML Viewer
+
+Web content viewer with link extraction:
+
+### Features
+
+<AccordionGroup>
+  <Accordion title="Rendering">
+    - Display HTML emails
+    - Render web pages
+    - JavaScript execution (sandboxed)
+    - CSS styling support
+  </Accordion>
+  
+  <Accordion title="Link Viewer">
+    - Extract all links from HTML
+    - List URLs in separate panel
+    - Click links to filter or open
+    - Export link list
+  </Accordion>
+  
+  <Accordion title="Attachment Handling">
+    - Display embedded images
+    - List attached files
+    - Preview attachments
+    - Extract attachments
+  </Accordion>
+  
+  <Accordion title="Email Display">
+    - Headers (From, To, Subject, Date)
+    - Body with formatting
+    - Inline images
+    - Attachment list
+  </Accordion>
+</AccordionGroup>
+
+### Security
+
+- External content blocked by default
+- Sandboxed execution environment
+- No automatic script execution
+- Safe preview of potentially malicious emails
+
+## Document Viewers
+
+### PDF Viewer
+
+Integrated PDF rendering:
+
+- **Multi-page Navigation**: Previous/next page, jump to page
+- **Zoom Controls**: Fit width, fit page, custom zoom
+- **Search**: Find text within PDF
+- **Annotations**: View PDF annotations and comments
+- **Text Selection**: Copy text from PDF
+
+### Office Document Viewer
+
+View Microsoft Office and LibreOffice files:
+
+**Supported Formats:**
+- Word (DOC, DOCX)
+- Excel (XLS, XLSX)
+- PowerPoint (PPT, PPTX)
+- LibreOffice (ODT, ODS, ODP)
+
+**Features:**
+- Native rendering with LibreOffice
+- Preserve formatting and layout
+- Multi-page/sheet support
+- Extract embedded objects
+
+<Warning>
+  Office viewer requires LibreOffice installation. See the [Installation](/installation) guide for requirements.
+</Warning>
+
+## Audio Viewer
+
+Audio file playback with transcription support:
+
+### Audio Controls
+
+- Play/pause/stop controls
+- Seek bar with timestamp
+- Volume control
+- Waveform visualization (if available)
+
+### Transcription Display
+
+If audio transcription was enabled during processing:
+
+- View text transcript
+- Timestamp synchronization
+- Click transcript to jump to audio position
+- Search within transcript
+- Export transcript text
+
+### Supported Formats
+
+- MP3, WAV, OGG, FLAC, AAC
+- M4A, WMA, AIFF
+
+## Referenced File Viewer
+
+Special viewer for handling file references and links:
+
+- Display shortcuts and symbolic links
+- Show reference metadata
+- Link to referenced item in case
+- Navigate to referenced file
+
+## Viewer Tips and Shortcuts
+
+<Tabs>
+  <Tab title="Keyboard Shortcuts">
+    - **Ctrl+F**: Search in viewer
+    - **Ctrl+↑/↓**: Previous/next hit
+    - **Ctrl+Q**: Toggle blur filter
+    - **Ctrl+W**: Toggle grayscale
+    - **Space**: Check/uncheck item
+    - **Arrow Keys**: Navigate items
+  </Tab>
+  
+  <Tab title="Performance">
+    - Viewers load content on-demand
+    - Large files may have load delay
+    - Use thumbnail cache for faster gallery browsing
+    - Pin viewer to prevent reloading
+  </Tab>
+  
+  <Tab title="Workflow">
+    - Keep multiple viewers visible simultaneously
+    - Compare text content while viewing images
+    - Review metadata alongside content
+    - Use hits table for quick scanning
+  </Tab>
+</Tabs>
+
+## Multi-Viewer Tab
+
+The MultiViewer automatically selects the best viewer:
+
+### Automatic Viewer Selection
+
+IPED detects file type and chooses appropriate viewer:
+
+```
+Image file → Image Viewer
+PDF file → PDF Viewer
+Video file → Video Viewer
+HTML file → HTML Viewer
+Office doc → LibreOffice Viewer
+Unknown → Hex Viewer
+```
+
+### Manual Viewer Selection
+
+Force a specific viewer:
+
+1. Right-click the file
+2. **View As** → Choose viewer
+3. Override automatic detection
+
+## Related Items Tables
+
+Additional viewers for related evidence:
+
+### Subitems Table
+
+View items extracted from the selected file:
+
+- Attachments from emails
+- Archived files from ZIP/RAR
+- Embedded objects from documents
+- Carved files from containers
+
+### Parent Table
+
+View container files:
+
+- ZIP archive containing file
+- Email containing attachment
+- Disk image containing file
+- Folder hierarchy
+
+### Duplicates Table
+
+All files with identical hash:
+
+- Same content, different paths
+- Useful for tracking file copies
+- Data exfiltration analysis
+
+### References Tables
+
+**Referenced Items:**
+- Files that this item references (links, shortcuts)
+
+**Referenced By:**
+- Items that reference this file (backlinks)
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Bookmarks" icon="bookmark" href="./bookmarks">
+    Tag important evidence found during viewing
+  </Card>
+  
+  <Card title="Bookmarks" icon="bookmark" href="/analysis/bookmarks">
+    Tag and organize evidence
+  </Card>
+</CardGroup>

@@ -1,0 +1,532 @@
+---
+title: "Command-Line Interface"
+description: "Complete guide to IPED's command-line options for batch processing and automation"
+---
+
+IPED provides a powerful command-line interface for batch processing of digital evidence. This allows for automation, scripting, and headless operation on servers.
+
+## Basic Usage
+
+The basic syntax for running IPED from the command line:
+
+```bash
+java -jar iped.jar -d <data_source> -o <output_folder> [options]
+```
+
+## Required Parameters
+
+### Data Source Input
+
+<ParamField path="-d" type="file" required>
+  Input data source (can be used multiple times for multiple sources)
+  
+  Supported formats:
+  - Disk images: DD, E01, Ex01, VHD, VHDX, VMDK
+  - Forensic formats: AD1 (AccessData), UFDR (Cellebrite), AFF (Linux)
+  - Virtual disks: ISO, ISO9660, UDF
+  - Physical drives
+  - Local folders
+  - IPED files (*.iped with tagged files)
+</ParamField>
+
+Alias: `-data`
+
+```bash Terminal
+java -jar iped.jar -d /evidence/disk.E01 -o /cases/case001
+```
+
+### Output Directory
+
+<ParamField path="-o" type="path" required>
+  Output folder where the processed case will be created
+</ParamField>
+
+Alias: `-output`
+
+If not specified, IPED creates an "iped" folder in the parent directory of the data source.
+
+```bash Terminal
+java -jar iped.jar -d /evidence/device.dd -o /cases/investigation_2024
+```
+
+## Processing Options
+
+### Profile Selection
+
+<ParamField path="-profile" type="string">
+  Select a processing profile that optimizes IPED for specific investigation types
+  
+  Available profiles:
+  - `forensic` - Full forensic analysis (default)
+  - `pedo` - CSAM investigations with specialized detection
+  - `triage` - Fast on-scene processing with basic indexing
+  - `fastmode` - Fastest preview mode (minimal processing)
+  - `blind` - Automated data extraction without GUI
+</ParamField>
+
+```bash Terminal
+java -jar iped.jar -d /evidence/phone.dd -o /cases/csam_case -profile pedo
+```
+
+See [Processing Profiles](/processing/profiles) for detailed information about each profile.
+
+### Multiple Data Sources
+
+Process multiple evidence sources into a single case:
+
+```bash Terminal
+java -jar iped.jar \
+  -d /evidence/laptop.E01 \
+  -d /evidence/phone.dd \
+  -d /evidence/usb_drive \
+  -o /cases/multi_device
+```
+
+### Data Source Names
+
+<ParamField path="-dname" type="string">
+  Custom display name for the preceding data source
+</ParamField>
+
+```bash Terminal
+java -jar iped.jar \
+  -d /evidence/disk1.E01 -dname "Suspect Laptop" \
+  -d /evidence/disk2.dd -dname "USB Drive" \
+  -o /cases/case001
+```
+
+## Advanced Options
+
+### Continue and Restart
+
+<ParamField path="--continue" type="boolean">
+  Resume a stopped or aborted processing from where it left off
+</ParamField>
+
+<ParamField path="--restart" type="boolean">
+  Discard the last aborted processing and start from the beginning
+</ParamField>
+
+```bash Terminal
+# Resume interrupted processing
+java -jar iped.jar --continue -o /cases/case001
+
+# Start over after failure
+java -jar iped.jar --restart -d /evidence/disk.E01 -o /cases/case001
+```
+
+### Append to Existing Case
+
+<ParamField path="--append" type="boolean">
+  Add new data sources to an existing processed case
+</ParamField>
+
+```bash Terminal
+java -jar iped.jar --append -d /evidence/new_device.dd -o /cases/existing_case
+```
+
+<Warning>
+  The IPED version must match when appending. Cannot append to cases created with different minor versions.
+</Warning>
+
+### Remove Evidence
+
+<ParamField path="-remove" type="string">
+  Remove a specific evidence source by name from an existing case
+</ParamField>
+
+```bash Terminal
+java -jar iped.jar -remove "USB Drive" -o /cases/case001
+```
+
+## Encryption and Security
+
+### Passwords
+
+<ParamField path="-p" type="string">
+  Password for encrypted images or volumes (can be used multiple times)
+</ParamField>
+
+Alias: `-password`
+
+```bash Terminal
+java -jar iped.jar -d /evidence/encrypted.E01 -p "password123" -o /cases/case001
+```
+
+For multiple encrypted sources:
+
+```bash Terminal
+java -jar iped.jar \
+  -d /evidence/disk1.E01 -p "pass1" \
+  -d /evidence/disk2.E01 -p "pass2" \
+  -o /cases/case001
+```
+
+## Search and Analysis
+
+### Keyword Lists
+
+<ParamField path="-l" type="file">
+  Line-delimited file with keywords to import and search. Keywords with no hits are automatically filtered out.
+</ParamField>
+
+Alias: `-keywordlist`
+
+```bash Terminal
+java -jar iped.jar -d /evidence/disk.E01 -l /config/keywords.txt -o /cases/case001
+```
+
+Example keywords.txt:
+```text
+confidential
+password
+credit card
+suspect name
+company name
+```
+
+### Selective OCR
+
+<ParamField path="-ocr" type="string">
+  Run OCR only on specific categories or bookmarks (can be used multiple times)
+</ParamField>
+
+```bash Terminal
+java -jar iped.jar -d /evidence/disk.E01 -ocr "Images" -ocr "Documents" -o /cases/case001
+```
+
+## File System Options
+
+### Timezone
+
+<ParamField path="-tz" type="string">
+  Original timezone of FAT file systems (e.g., GMT-3, GMT-4). Uses local system timezone if not specified.
+</ParamField>
+
+Alias: `-timezone`
+
+```bash Terminal
+java -jar iped.jar -d /evidence/disk.dd -tz GMT-5 -o /cases/case001
+```
+
+### Block Size
+
+<ParamField path="-b" type="integer">
+  Sector block size in bytes. Required for devices with 4K sectors.
+</ParamField>
+
+Alias: `-blocksize`
+
+```bash Terminal
+# For 4K sector drives
+java -jar iped.jar -d /evidence/disk.E01 -b 4096 -o /cases/case001
+```
+
+### File Owner Information
+
+<ParamField path="--addowner" type="boolean">
+  Index file owner information when processing local folders. This is slow over network shares.
+</ParamField>
+
+```bash Terminal
+java -jar iped.jar -d /network/share --addowner -o /cases/case001
+```
+
+## Export and Reporting
+
+### Report Configuration
+
+<ParamField path="-nocontent" type="string">
+  Do not export file contents to report for a specific category/bookmark, only thumbnails and properties
+</ParamField>
+
+```bash Terminal
+java -jar iped.jar -d /evidence/disk.E01 -nocontent "Videos" -o /cases/case001
+```
+
+<ParamField path="--nopstattachs" type="boolean">
+  Do not automatically export PST/OST email attachments to reports
+</ParamField>
+
+<ParamField path="--nolinkeditems" type="boolean">
+  Do not automatically export items linked to chats
+</ParamField>
+
+```bash Terminal
+java -jar iped.jar -d /evidence/disk.E01 --nopstattachs --nolinkeditems -o /cases/case001
+```
+
+### ASAP Integration
+
+<ParamField path="-asap" type="file">
+  Brazilian Federal Police .asap file with case information to include in HTML reports
+</ParamField>
+
+```bash Terminal
+java -jar iped.jar -d /evidence/disk.E01 -asap /cases/case001.asap -o /cases/case001
+```
+
+### Portable Cases
+
+<ParamField path="--portable" type="boolean">
+  Use relative paths to forensic images so the case can be moved to other machines (images must be on the same volume)
+</ParamField>
+
+```bash Terminal
+java -jar iped.jar -d ./evidence/disk.E01 --portable -o ./cases/case001
+```
+
+## Interface Options
+
+### No GUI Mode
+
+<ParamField path="--nogui" type="boolean">
+  Run in text mode without progress windows for batch/automated processing
+</ParamField>
+
+```bash Terminal
+java -jar iped.jar --nogui -d /evidence/disk.E01 -o /cases/case001
+```
+
+### Logging
+
+<ParamField path="-log" type="file">
+  Redirect log output to a specific file
+</ParamField>
+
+<ParamField path="--nologfile" type="boolean">
+  Send log messages to standard output instead of a file
+</ParamField>
+
+```bash Terminal
+# Custom log location
+java -jar iped.jar -d /evidence/disk.E01 -log /logs/case001.log -o /cases/case001
+
+# Log to stdout for piping
+java -jar iped.jar --nogui --nologfile -d /evidence/disk.E01 -o /cases/case001 | tee processing.log
+```
+
+### Custom Splash Message
+
+<ParamField path="-splash" type="string">
+  Custom message to display in the splash screen
+</ParamField>
+
+```bash Terminal
+java -jar iped.jar -splash "Processing Case #2024-001" -d /evidence/disk.E01 -o /cases/case001
+```
+
+## Network Features
+
+### Internet Data Download
+
+<ParamField path="--downloadInternetData" type="boolean">
+  Download Internet data to enrich evidence (e.g., WhatsApp media files still available on servers)
+</ParamField>
+
+```bash Terminal
+java -jar iped.jar -d /evidence/phone.dd --downloadInternetData -o /cases/case001
+```
+
+<Warning>
+  This downloads external data from the internet. Ensure you have proper legal authorization and network access.
+</Warning>
+
+## Module-Specific Parameters
+
+### Extra Parameters
+
+<ParamField path="-X" type="key=value">
+  Pass extra configuration options to specific modules
+</ParamField>
+
+```bash Terminal
+java -jar iped.jar -d /evidence/disk.E01 -Xmodule.option=value -o /cases/case001
+```
+
+## Help and Information
+
+<ParamField path="--help" type="boolean">
+  Display help information with all available parameters
+</ParamField>
+
+Aliases: `-h`, `/?`
+
+```bash Terminal
+java -jar iped.jar --help
+```
+
+## Complete Examples
+
+### Basic Forensic Case
+
+```bash Terminal
+java -jar iped.jar \
+  -d /evidence/laptop.E01 \
+  -o /cases/investigation_001 \
+  -profile forensic \
+  -l /config/keywords.txt
+```
+
+### CSAM Investigation
+
+```bash Terminal
+java -jar iped.jar \
+  -d /evidence/suspect_device.dd \
+  -o /cases/csam_investigation \
+  -profile pedo \
+  --nogui \
+  -log /logs/csam_case.log
+```
+
+### Multi-Device Case
+
+```bash Terminal
+java -jar iped.jar \
+  -d /evidence/laptop.E01 -dname "Suspect Laptop" \
+  -d /evidence/phone.dd -dname "iPhone 12" -p "1234" \
+  -d /evidence/usb_drive -dname "USB Drive" \
+  -o /cases/fraud_investigation \
+  -profile forensic \
+  -tz GMT-5 \
+  --portable
+```
+
+### Fast Triage Processing
+
+```bash Terminal
+java -jar iped.jar \
+  -d /evidence/seized_device.dd \
+  -o /cases/triage_001 \
+  -profile fastmode \
+  --nogui \
+  -l /config/urgent_keywords.txt
+```
+
+### Encrypted Device with Resume
+
+```bash Terminal
+# Initial processing
+java -jar iped.jar \
+  -d /evidence/encrypted.E01 \
+  -p "SecurePassword123" \
+  -o /cases/encrypted_case \
+  -profile forensic
+
+# Resume if interrupted
+java -jar iped.jar --continue -o /cases/encrypted_case
+```
+
+### Batch Processing Script
+
+```bash batch_process.sh
+#!/bin/bash
+
+# Process multiple cases in batch
+for evidence in /evidence/*.E01; do
+  case_name=$(basename "$evidence" .E01)
+  echo "Processing $case_name..."
+  
+  java -jar iped.jar \
+    --nogui \
+    -d "$evidence" \
+    -o "/cases/$case_name" \
+    -profile forensic \
+    -log "/logs/$case_name.log"
+  
+  if [ $? -eq 0 ]; then
+    echo "$case_name completed successfully"
+  else
+    echo "$case_name failed"
+  fi
+done
+```
+
+## Exit Codes
+
+| Code | Description |
+|------|-------------|
+| 0    | Processing completed successfully |
+| 1    | Processing failed or was aborted |
+
+## Performance Tips
+
+<Steps>
+  <Step title="Use appropriate profiles">
+    Select the right profile for your investigation type. Using `fastmode` for triage can save hours.
+  </Step>
+  
+  <Step title="Optimize Java heap size">
+    Allocate sufficient memory for large cases:
+    ```bash Terminal
+    java -Xmx32G -jar iped.jar -d /evidence/large.E01 -o /cases/case001
+    ```
+  </Step>
+  
+  <Step title="Process locally">
+    Process evidence on local drives, not network shares, for optimal performance.
+  </Step>
+  
+  <Step title="Use SSD storage">
+    Store output on SSD drives for 2-3x faster processing.
+  </Step>
+  
+  <Step title="Monitor resources">
+    IPED can process at up to 400GB/h with modern hardware and proper configuration.
+  </Step>
+</Steps>
+
+## Common Issues
+
+<AccordionGroup>
+  <Accordion title="Out of Memory Error">
+    Increase Java heap size:
+    ```bash Terminal
+    java -Xmx16G -jar iped.jar -d /evidence/disk.E01 -o /cases/case001
+    ```
+    
+    See the [Troubleshooting guide](https://github.com/sepinf-inc/IPED/wiki/Troubleshooting) for more solutions.
+  </Accordion>
+  
+  <Accordion title="Cannot append to existing case">
+    Ensure versions match. IPED checks minor version compatibility:
+    ```
+    Appending to case with old version X.Y.Z not supported.
+    ```
+    Use the same IPED version or create a new case.
+  </Accordion>
+  
+  <Accordion title="Profile not found">
+    Verify the profile name is spelled correctly and exists:
+    ```bash Terminal
+    ls iped-app/resources/config/profiles/
+    ```
+  </Accordion>
+  
+  <Accordion title="Encrypted image won't open">
+    Ensure the password is provided correctly:
+    ```bash Terminal
+    java -jar iped.jar -d /evidence/encrypted.E01 -p "YourPassword" -o /cases/case001
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Processing Profiles" icon="sliders" href="/processing/profiles">
+    Learn about the five processing profiles and when to use each
+  </Card>
+  
+  <Card title="Configuration" icon="gear" href="/processing/configuration">
+    Customize IPED processing options and module settings
+  </Card>
+  
+  <Card title="Data Sources" icon="hard-drive" href="/processing/data-sources">
+    Detailed information about supported evidence formats
+  </Card>
+  
+  <Card title="Troubleshooting" icon="wrench" href="https://github.com/sepinf-inc/IPED/wiki/Troubleshooting">
+    Solutions to common processing issues
+  </Card>
+</CardGroup>

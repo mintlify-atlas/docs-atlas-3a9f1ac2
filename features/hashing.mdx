@@ -1,0 +1,162 @@
+---
+title: File Hashing
+description: Cryptographic hash calculation and deduplication in IPED
+---
+
+IPED computes cryptographic hashes for all processed files to enable file identification, deduplication, and comparison against known hash databases.
+
+## Supported Hash Algorithms
+
+IPED supports multiple hash algorithms computed in parallel for optimal performance:
+
+- **MD5** - Fast legacy algorithm, still widely used in forensics
+- **SHA-1** - Standard algorithm for many hash databases
+- **SHA-256** - Modern secure hash, recommended for integrity verification
+- **SHA-512** - High-security hash for sensitive cases
+- **eDonkey** - Peer-to-peer network hash for file sharing investigations
+- **PhotoDNA** - Perceptual hash for similar image detection (law enforcement only)
+
+## Configuration
+
+Hash algorithms are configured in `HashTaskConfig.txt`. By default, MD5 is enabled as the primary hash:
+
+```properties
+enableHashTask = true
+algorithms = md5
+```
+
+To enable multiple algorithms:
+
+```properties
+algorithms = md5; sha-1; sha-256
+```
+
+## Implementation Details
+
+The hash calculation is implemented in `/iped-engine/src/main/java/iped/engine/task/HashTask.java`:
+
+```java
+public enum HASH {
+    MD5("md5"),
+    SHA1("sha-1"),
+    SHA256("sha-256"),
+    SHA512("sha-512"),
+    EDONKEY("edonkey");
+}
+```
+
+### Parallel Processing
+
+IPED uses a multi-threaded approach with ExecutorService to compute multiple hashes simultaneously:
+
+- Reads file data once from disk
+- Updates all enabled hash algorithms in parallel threads
+- Minimizes I/O overhead by processing in 1MB buffers
+
+### eDonkey Hash
+
+The eDonkey hash is computed differently than standard hashes:
+
+- Files are divided into 9.5MB chunks
+- MD4 hash computed for each chunk
+- Final hash is MD4 of all chunk hashes concatenated
+- Used to identify files shared on eDonkey/eMule networks
+
+## Hash Database Lookup
+
+IPED supports multiple hash database formats:
+
+### NIST NSRL
+National Software Reference Library - identifies known legitimate software files to exclude from analysis.
+
+### NIST CAID
+Child Abuse Image Database - identifies known CSAM content (law enforcement only).
+
+### Project VIC
+Victim Identification database for child exploitation investigations (law enforcement only).
+
+### Interpol ICSE
+International Child Sexual Exploitation database (law enforcement only).
+
+### Custom CSV
+Standard comma-separated format:
+```
+hash,category
+D41D8CD98F00B204E9800998ECF8427E,Known Good
+5D41402ABC4B2A76B9719D911017C592,Contraband
+```
+
+## Deduplication
+
+IPED performs fast hash deduplication during processing:
+
+- First occurrence of a hash is fully processed
+- Subsequent files with same hash skip expensive operations:
+  - Parsing
+  - Text extraction
+  - OCR
+  - Signature analysis
+- Metadata still extracted for all instances
+- Significantly reduces processing time for large datasets
+
+## Hash Storage
+
+Computed hashes are stored as item properties:
+
+- Primary hash in `hash` field (first configured algorithm)
+- Additional hashes in extra attributes: `md5`, `sha-1`, `sha-256`, etc.
+- Indexed for fast searching
+- Available in analysis interface and reports
+
+## PhotoDNA
+
+PhotoDNA is a perceptual hashing technology developed by Microsoft:
+
+- Generates robust hash resistant to image modifications
+- Detects cropped, resized, or color-adjusted images
+- Used globally by law enforcement for CSAM detection
+- **Only available to law enforcement agencies**
+- Contact iped@pf.gov.br for access
+
+## Performance
+
+Hash calculation performance:
+
+- Single MD5: ~400-600 MB/s on modern hardware
+- Multiple algorithms in parallel: Minimal overhead (~10-15%)
+- Hash lookups: Optimized with in-memory hash maps
+- Negligible impact on overall processing speed
+
+## Error Handling
+
+The HashTask handles I/O errors gracefully:
+
+```java
+if (e instanceof IOException) {
+    evidence.setExtraAttribute("ioError", "true");
+    stats.incIoErrors();
+}
+```
+
+Files with I/O errors during hashing:
+- Marked with `ioError` attribute
+- Empty hash value assigned
+- Logged for investigator review
+- Processing continues for other items
+
+## Use Cases
+
+### Case Deduplication
+Identify duplicate files across multiple devices or data sources.
+
+### Known File Filtering
+Exclude operating system files and common applications using NSRL.
+
+### Contraband Detection
+Automatic flagging of known illegal content from hash databases.
+
+### File Tracking
+Track file movement across devices using hash values.
+
+### Data Verification
+Verify forensic image integrity and chain of custody.

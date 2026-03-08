@@ -1,0 +1,548 @@
+---
+title: Multicase Analysis
+description: Analyze multiple IPED cases together with support for up to 135 million items
+---
+
+IPED supports multicase analysis, allowing you to search and analyze multiple processed cases simultaneously. This is essential for large investigations spanning multiple evidence sources or tracking patterns across related cases.
+
+## Overview
+
+Multicase support enables:
+- **Unified Search**: Search across all cases with a single query
+- **Cross-Case Correlation**: Find connections between items in different cases
+- **Massive Scale**: Handle up to 135 million items across multiple cases
+- **Centralized Bookmarks**: Create bookmarks that span multiple cases
+- **Graph Analysis**: Build relationship graphs across case boundaries
+
+<Note>
+IPED achieved processing 135 million items in a multicase as of December 12, 2019, demonstrating its capability to handle extremely large investigations.
+</Note>
+
+## Creating a Multicase
+
+### Prerequisites
+
+Each case must be fully processed before being added to a multicase:
+
+<Steps>
+
+<Step title="Process Individual Cases">
+Process each case separately first:
+
+```bash
+# Process case 1
+java -jar iped.jar --dataSource /evidence/suspect1 --output /cases/case1
+
+# Process case 2
+java -jar iped.jar --dataSource /evidence/suspect2 --output /cases/case2
+
+# Process case 3
+java -jar iped.jar --dataSource /evidence/suspect3 --output /cases/case3
+```
+</Step>
+
+<Step title="Launch with Multicase Flag">
+Open IPED with the `-multicases` flag:
+
+```bash
+java -jar iped.jar -multicases
+```
+
+This opens a case selection dialog.
+</Step>
+
+<Step title="Select Cases">
+In the UI, select multiple case folders:
+- Hold Ctrl/Cmd to select multiple folders
+- Choose all cases you want to analyze together
+- Click OK to load the multicase
+</Step>
+
+</Steps>
+
+### Command-Line Method
+
+You can also specify cases directly:
+
+```bash
+java -jar iped.jar \
+  -multicases \
+  -d /cases/case1 \
+  -d /cases/case2 \
+  -d /cases/case3
+```
+
+## Multicase Interface
+
+### Source Identification
+
+In multicase mode, the interface shows which case each item belongs to:
+
+- **Source Column**: Displays the originating case for each item
+- **Color Coding**: Different cases may have distinct colors
+- **Filtering**: Filter results by source case
+
+### Search Across Cases
+
+Search queries automatically span all loaded cases:
+
+```
+# Find all emails across all cases
+type:email
+
+# Find documents mentioning "offshore" in any case
+offshore AND type:pdf
+
+# Find images in a specific case
+type:image AND source:case1
+```
+
+### Cross-Case Bookmarks
+
+Bookmarks in multicase mode can contain items from multiple sources:
+
+```
+1. Search: password AND (type:doc OR type:pdf)
+2. Select relevant items from all cases
+3. Create bookmark: "Password Documents"
+4. Bookmark now contains items from multiple cases
+```
+
+## Performance Considerations
+
+### Hardware Requirements
+
+Multicase analysis requires substantial resources:
+
+<Tabs>
+  <Tab title="Small Multicase">
+  **< 10 million items**
+  
+  - **RAM**: 16 GB minimum
+  - **CPU**: 4+ cores
+  - **Storage**: SSD recommended
+  - **Java Heap**: `-Xmx8G`
+  </Tab>
+  
+  <Tab title="Medium Multicase">
+  **10-50 million items**
+  
+  - **RAM**: 32 GB minimum
+  - **CPU**: 8+ cores
+  - **Storage**: Fast SSD required
+  - **Java Heap**: `-Xmx16G`
+  </Tab>
+  
+  <Tab title="Large Multicase">
+  **50-135 million items**
+  
+  - **RAM**: 64 GB+ recommended
+  - **CPU**: 16+ cores
+  - **Storage**: NVMe SSD
+  - **Java Heap**: `-Xmx32G` or more
+  </Tab>
+</Tabs>
+
+### Memory Configuration
+
+Adjust Java heap size based on your multicase:
+
+```bash
+# Small multicase (< 10M items)
+java -Xmx8G -jar iped.jar -multicases
+
+# Medium multicase (10-50M items)
+java -Xmx16G -jar iped.jar -multicases
+
+# Large multicase (50M+ items)
+java -Xmx32G -Xms32G -jar iped.jar -multicases
+```
+
+### Loading Time
+
+Multicase loading time varies by size:
+
+| Items | Typical Load Time | Notes |
+|-------|------------------|-------|
+| 1M | < 1 minute | Fast |
+| 10M | 2-5 minutes | Acceptable |
+| 50M | 10-20 minutes | Prepare coffee |
+| 135M | 30-60 minutes | Be patient |
+
+<Tip>
+Use filtered sub-cases for daily work, and only load the full multicase when necessary.
+</Tip>
+
+## Use Cases
+
+### Corporate Investigation
+
+Investigate multiple employees' devices:
+
+```bash
+# Process each employee's device
+java -jar iped.jar --dataSource /evidence/employee1_laptop --output /cases/emp1
+java -jar iped.jar --dataSource /evidence/employee2_laptop --output /cases/emp2
+java -jar iped.jar --dataSource /evidence/employee3_laptop --output /cases/emp3
+
+# Analyze together
+java -jar iped.jar -multicases -d /cases/emp1 -d /cases/emp2 -d /cases/emp3
+```
+
+**Search scenarios:**
+- Find communications between suspects: `from:emp1 AND to:emp2`
+- Track document sharing: `author:emp1 AND path:*emp2*`
+- Identify common files: `hash:abc123` (finds duplicates across cases)
+
+### Criminal Investigation
+
+Multiple suspects with multiple devices:
+
+```bash
+# Suspect 1: phone + laptop
+java -jar iped.jar --dataSource /evidence/suspect1_phone --output /cases/s1_phone
+java -jar iped.jar --dataSource /evidence/suspect1_laptop --output /cases/s1_laptop
+
+# Suspect 2: phone + tablet
+java -jar iped.jar --dataSource /evidence/suspect2_phone --output /cases/s2_phone
+java -jar iped.jar --dataSource /evidence/suspect2_tablet --output /cases/s2_tablet
+
+# Multicase analysis
+java -jar iped.jar -multicases \
+  -d /cases/s1_phone \
+  -d /cases/s1_laptop \
+  -d /cases/s2_phone \
+  -d /cases/s2_tablet
+```
+
+**Analysis goals:**
+- Timeline correlation across devices
+- Communication patterns between suspects
+- Shared contacts and locations
+- File transfers between devices
+
+### Long-Term Investigation
+
+Add cases over time as new evidence arrives:
+
+```bash
+# Start with initial evidence
+java -jar iped.jar -multicases -d /cases/2023_01_evidence
+
+# Later, add new evidence without reprocessing old
+java -jar iped.jar --dataSource /new_evidence --output /cases/2023_06_evidence
+
+# Analyze everything together
+java -jar iped.jar -multicases \
+  -d /cases/2023_01_evidence \
+  -d /cases/2023_06_evidence \
+  -d /cases/2023_12_evidence
+```
+
+## Cross-Case Features
+
+### Duplicate Detection
+
+Find identical files across cases using hash matching:
+
+```
+# Find files appearing in multiple cases
+hash:abc123def456
+
+# Find duplicate emails
+type:email AND messageId:"<unique@message.id>"
+```
+
+The duplicate counter shows how many times each file appears across all cases.
+
+### Graph Analysis
+
+Graph analysis can merge data across cases:
+
+<Steps>
+
+<Step title="Enable Graph Analysis">
+Ensure GraphTask is enabled in all case processing:
+
+```xml TaskInstaller.xml
+<task class="iped.engine.graph.GraphTask"></task>
+```
+</Step>
+
+<Step title="Open Graph View">
+In multicase mode:
+1. Tools → Graph Analysis
+2. Select entities to analyze (contacts, locations, etc.)
+3. Graph shows connections across all cases
+</Step>
+
+<Step title="Analyze Patterns">
+- Find common contacts across suspects
+- Identify communication clusters
+- Track money transfers
+- Map location patterns
+</Step>
+
+</Steps>
+
+### Timeline Analysis
+
+Unified timeline across all cases:
+
+1. Open Timeline view
+2. Events from all cases appear together
+3. Color-coded by source case
+4. Filter by case, date range, or event type
+
+**Example workflow:**
+```
+1. Set date range: 2023-01-15 to 2023-01-20
+2. Filter event types: Calls, Messages, File Access
+3. Identify suspicious time overlaps between suspects
+4. Create bookmark: "Timeline Correlation - Jan 15"
+```
+
+## Web API for Multicases
+
+The Web API supports multicase access:
+
+```json sources.json
+[
+  {
+    "id": "suspect1_phone",
+    "path": "/cases/s1_phone"
+  },
+  {
+    "id": "suspect1_laptop",
+    "path": "/cases/s1_laptop"
+  },
+  {
+    "id": "suspect2_phone",
+    "path": "/cases/s2_phone"
+  }
+]
+```
+
+```bash
+# Start Web API with multicase
+java -jar iped-web-api.jar --sources sources.json
+
+# Search across all cases
+curl "http://localhost:8080/search?q=cocaine"
+
+# Search specific case
+curl "http://localhost:8080/search?q=cocaine&sourceID=suspect1_phone"
+```
+
+See [Web API](/advanced/web-api) for full API documentation.
+
+## Multicase Storage
+
+### Directory Structure
+
+Multicase creates metadata in a shared directory:
+
+```
+iped-multicases/
+└── multicase-{hash}/
+    ├── graph/           # Cross-case graph database
+    ├── bookmarks/       # Shared bookmarks
+    └── cache/           # Timeline and search cache
+```
+
+### Disk Space
+
+Multicase metadata is minimal compared to source cases:
+
+| Items | Case Size | Multicase Overhead |
+|-------|-----------|-------------------|
+| 1M | ~50 GB | ~500 MB |
+| 10M | ~500 GB | ~2 GB |
+| 50M | ~2 TB | ~10 GB |
+| 135M | ~5 TB | ~25 GB |
+
+## Best Practices
+
+<AccordionGroup>
+
+<Accordion title="Process Cases Consistently">
+Use the same processing profile for all cases in a multicase:
+
+```bash
+# Use same profile for all
+java -jar iped.jar --dataSource /evidence/case1 --output /cases/case1 --profile forensic
+java -jar iped.jar --dataSource /evidence/case2 --output /cases/case2 --profile forensic
+java -jar iped.jar --dataSource /evidence/case3 --output /cases/case3 --profile forensic
+```
+
+Inconsistent processing can lead to missing correlations.
+</Accordion>
+
+<Accordion title="Use Meaningful Case Names">
+Name cases clearly in the file system:
+
+```
+Good:
+/cases/2023_investigation/suspect1_phone
+/cases/2023_investigation/suspect1_laptop
+/cases/2023_investigation/suspect2_phone
+
+Bad:
+/cases/case1
+/cases/case2
+/cases/output
+```
+</Accordion>
+
+<Accordion title="Incremental Analysis">
+Start with a subset of cases, then expand:
+
+```bash
+# Week 1: Analyze primary suspects
+java -jar iped.jar -multicases -d /cases/suspect1 -d /cases/suspect2
+
+# Week 2: Add related cases
+java -jar iped.jar -multicases \
+  -d /cases/suspect1 \
+  -d /cases/suspect2 \
+  -d /cases/suspect3 \
+  -d /cases/witness1
+```
+</Accordion>
+
+<Accordion title="Bookmark Management">
+Organize bookmarks by source or topic:
+
+- `[S1] Communication Evidence`
+- `[S2] Financial Documents`
+- `[ALL] Shared Files`
+- `[Timeline] Jan 15-20 Activity`
+
+Prefix indicates scope.
+</Accordion>
+
+<Accordion title="Regular Exports">
+Export key findings regularly:
+
+```bash
+# Export bookmarked items to portable case
+Tools → Generate Report → Portable Case
+
+# Export to CSV for external analysis
+Tools → Generate Report → CSV Report
+```
+</Accordion>
+
+</AccordionGroup>
+
+## Limitations
+
+<Warning>
+**Known limitations in multicase mode:**
+
+- **Image Viewing**: Robust image reading may not work in all multicase scenarios
+- **Graph Merging**: Currently copies nodes from single cases (not true merge)
+- **Processing**: Cannot trigger new processing in multicase mode
+- **Reports**: Some report types work better with single cases
+</Warning>
+
+### Workarounds
+
+**For image issues:**
+- Open individual cases when detailed image analysis is needed
+- Use thumbnails in multicase mode
+- Export images for external viewing
+
+**For graph limitations:**
+- Generate graphs in individual cases first
+- Use graph view for cross-case visualization
+- Export graph data for external analysis
+
+## Performance Tuning
+
+### JVM Options
+
+Optimize for large multicases:
+
+```bash
+java -Xmx32G \
+     -Xms32G \
+     -XX:+UseG1GC \
+     -XX:MaxGCPauseMillis=200 \
+     -XX:+ParallelRefProcEnabled \
+     -XX:+UseStringDeduplication \
+     -jar iped.jar -multicases
+```
+
+### Case Optimization
+
+Before creating multicase:
+
+1. **Remove unnecessary items**: Use filters during processing
+2. **Deduplicate**: Enable hash deduplication
+3. **Compact indices**: Optimize Lucene indices
+4. **Archive old cases**: Move inactive cases out of multicase
+
+### Query Optimization
+
+```
+# SLOW - searches all text in all cases
+*keyword*
+
+# FASTER - narrow by field
+path:*keyword*
+
+# FASTEST - specific field with no wildcards
+type:email AND from:suspect@example.com
+```
+
+## Troubleshooting
+
+### Out of Memory
+
+**Error**: `java.lang.OutOfMemoryError: Java heap space`
+
+**Solution**: Increase heap size:
+```bash
+java -Xmx64G -jar iped.jar -multicases
+```
+
+### Slow Loading
+
+**Problem**: Multicase takes too long to load
+
+**Solutions**:
+1. Reduce number of cases
+2. Use faster storage (NVMe SSD)
+3. Increase RAM allocation
+4. Close other applications
+
+### Case Not Found
+
+**Error**: `Case directory not found or invalid`
+
+**Checks**:
+1. Ensure case is fully processed
+2. Check for `.iped` marker file
+3. Verify path is correct
+4. Confirm case index is intact
+
+### Indexing Issues
+
+**Problem**: Some cases don't appear in search
+
+**Solutions**:
+1. Rebuild case index: `java -jar iped.jar --reindex /cases/case1`
+2. Check case processing logs for errors
+3. Verify all cases use compatible IPED versions
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Web API" icon="cloud" href="/advanced/web-api">
+    Access multicases remotely via REST API
+  </Card>
+  <Card title="Scripting" icon="scroll" href="/advanced/scripting">
+    Automate multicase analysis with scripts
+  </Card>
+</CardGroup>

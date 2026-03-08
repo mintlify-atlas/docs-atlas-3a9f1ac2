@@ -1,0 +1,556 @@
+---
+title: Searching
+description: Advanced search techniques in IPED using Lucene queries, regex patterns, and metadata searches
+icon: magnifying-glass
+---
+
+IPED provides powerful search capabilities through Apache Lucene full-text indexing, enabling fast searches across millions of items including file content, metadata, and unallocated space.
+
+## Search Box
+
+The search box is located in the top toolbar and supports multiple query types:
+
+<Frame>
+  <img src="/images/search-box.png" alt="IPED Search Box" />
+</Frame>
+
+<Info>
+  The search box maintains a history of recent queries accessible via the dropdown arrow.
+</Info>
+
+## Basic Searches
+
+### Simple Text Search
+
+Enter any text to search across file names and content:
+
+```
+password
+```
+
+This searches for the word "password" in:
+- File names
+- File content (text extracted from all supported formats)
+- Metadata fields
+
+### Phrase Search
+
+Use quotes for exact phrase matching:
+
+```
+"credit card number"
+```
+
+### Case Sensitivity
+
+<Note>
+  Searches are **case-insensitive** by default. "Password", "PASSWORD", and "password" return the same results.
+</Note>
+
+## Lucene Query Syntax
+
+IPED uses Apache Lucene's powerful query syntax for complex searches.
+
+### Field-Specific Searches
+
+Search in specific metadata fields:
+
+<Tabs>
+  <Tab title="Common Fields">
+    ```
+    name:contract*
+    content:confidential
+    type:pdf
+    ext:docx
+    category:"Office Documents"
+    hash:5d41402abc4b2a76b9719d911017c592
+    ```
+  </Tab>
+  
+  <Tab title="Date Fields">
+    ```
+    modified:[2023-01-01 TO 2023-12-31]
+    created:>2023-06-01
+    accessed:<2023-01-01
+    ```
+  </Tab>
+  
+  <Tab title="Size Fields">
+    ```
+    length:>1048576
+    length:[100000 TO 500000]
+    ```
+  </Tab>
+  
+  <Tab title="Status Fields">
+    ```
+    deleted:true
+    carved:true
+    encrypted:true
+    isDir:false
+    ```
+  </Tab>
+</Tabs>
+
+### Boolean Operators
+
+Combine search terms with boolean logic:
+
+<AccordionGroup>
+  <Accordion title="AND Operator">
+    Both terms must be present:
+    ```
+    password AND database
+    ```
+    
+    Implicit AND (space between terms):
+    ```
+    password database
+    ```
+  </Accordion>
+  
+  <Accordion title="OR Operator">
+    Either term can be present:
+    ```
+    password OR credential
+    ```
+  </Accordion>
+  
+  <Accordion title="NOT Operator">
+    Exclude items containing the term:
+    ```
+    password NOT test
+    ```
+    
+    Alternative syntax:
+    ```
+    password -test
+    ```
+  </Accordion>
+  
+  <Accordion title="Required/Prohibited">
+    Required (+) and prohibited (-) prefixes:
+    ```
+    +password -test
+    ```
+  </Accordion>
+</AccordionGroup>
+
+### Grouping and Precedence
+
+Use parentheses to control query logic:
+
+```
+(password OR credential) AND (database OR sql)
+```
+
+```
+name:(report OR document) AND type:pdf
+```
+
+## Wildcards
+
+### Single Character Wildcard (?)
+
+Match any single character:
+
+```
+te?t
+```
+
+Matches: test, text, tent
+
+### Multiple Character Wildcard (*)
+
+Match zero or more characters:
+
+```
+test*
+```
+
+Matches: test, tests, testing, tester
+
+```
+*password*
+```
+
+Matches: password, passwords, mypassword, password123
+
+<Warning>
+  Leading wildcards (`*password`) are slower but supported. Use specific searches when possible for better performance.
+</Warning>
+
+### Examples
+
+```
+name:report_2023*.pdf
+name:document_?.docx
+content:pass*
+```
+
+## Range Searches
+
+### Inclusive Ranges
+
+Use square brackets `[ ]` for inclusive boundaries:
+
+```
+modified:[2023-01-01 TO 2023-12-31]
+length:[1000000 TO 5000000]
+```
+
+### Exclusive Ranges
+
+Use curly brackets `{ }` for exclusive boundaries:
+
+```
+modified:{2023-01-01 TO 2023-12-31}
+```
+
+### Open-ended Ranges
+
+Search for values greater or less than:
+
+```
+modified:>=2023-01-01
+length:<1000000
+created:>2023-06-15
+```
+
+### Date Format
+
+Dates can be specified in various formats:
+
+```
+modified:2023-01-15
+modified:"2023-01-15 14:30:00"
+modified:[2023-01 TO 2023-12]
+```
+
+## Fuzzy Search
+
+### Similarity Search (~)
+
+Find terms similar to the search term:
+
+```
+passwerd~
+```
+
+Matches: password, passwords (tolerates spelling errors)
+
+### Edit Distance
+
+Specify maximum edit distance (0-2):
+
+```
+passwerd~1
+passwerd~2
+```
+
+<Info>
+  Fuzzy search is useful for finding misspelled words or variations in text.
+</Info>
+
+## Proximity Search
+
+Find words within a specific distance:
+
+```
+"password database"~10
+```
+
+Matches documents where "password" and "database" appear within 10 words of each other.
+
+## Boosting
+
+Increase relevance of specific terms:
+
+```
+password^4 credential^2 access
+```
+
+Items containing "password" are scored 4x higher, "credential" 2x higher.
+
+## Regular Expression Searches
+
+### Regex in Content
+
+IPED supports regex validation scripts for common patterns:
+
+<CardGroup cols={2}>
+  <Card title="Email Addresses" icon="envelope">
+    ```
+    regex:email
+    ```
+    Finds email addresses with validation
+  </Card>
+  
+  <Card title="Credit Cards" icon="credit-card">
+    ```
+    regex:credit-card
+    ```
+    Finds credit card numbers with Luhn algorithm validation
+  </Card>
+  
+  <Card title="URLs" icon="link">
+    ```
+    regex:url
+    ```
+    Extracts web addresses
+  </Card>
+  
+  <Card title="IP Addresses" icon="network-wired">
+    ```
+    regex:ip
+    ```
+    Finds IPv4 addresses
+  </Card>
+</CardGroup>
+
+### Additional Regex Patterns
+
+<Tabs>
+  <Tab title="Financial">
+    - `regex:money` - Money values
+    - `regex:bitcoin` - Bitcoin wallet addresses
+    - `regex:ethereum` - Ethereum addresses
+    - `regex:monero` - Monero addresses
+    - `regex:ripple` - Ripple addresses
+  </Tab>
+  
+  <Tab title="Network">
+    - `regex:ip` - IP addresses
+    - `regex:mac` - MAC addresses
+    - `regex:url` - URLs
+  </Tab>
+  
+  <Tab title="Personal Data">
+    - `regex:email` - Email addresses
+    - `regex:credit-card` - Credit cards
+    - Custom patterns via configuration
+  </Tab>
+</Tabs>
+
+<Note>
+  Regex searches are processed during case indexing. Results are available as categories in the navigation tree.
+</Note>
+
+## Metadata Searches
+
+### Search by File Properties
+
+```
+type:"application/pdf"
+ext:jpg
+mimeType:"image/jpeg"
+```
+
+### Search by Hash
+
+```
+hash:5d41402abc4b2a76b9719d911017c592
+md5:5d41402abc4b2a76b9719d911017c592
+sha-1:aaf4c61ddcc5e8a2dabede0f3b482cd9aea9434d
+sha-256:2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae
+```
+
+### Search by Category
+
+```
+category:"Office Documents"
+category:Images
+category:"Compressed Files"
+```
+
+<Tip>
+  Category searches automatically include subcategories. Searching for "Documents" includes "Office Documents", "PDF Files", etc.
+</Tip>
+
+### Custom Metadata Fields
+
+Search extracted metadata:
+
+```
+author:"John Doe"
+subject:confidential
+lastModifiedBy:smith
+exif:model:"Canon EOS"
+```
+
+## Advanced Search Examples
+
+<AccordionGroup>
+  <Accordion title="Find Recent Large Files">
+    ```
+    length:>10485760 AND modified:>2023-01-01 AND NOT deleted:true
+    ```
+    Files larger than 10MB, modified after Jan 1 2023, not deleted
+  </Accordion>
+  
+  <Accordion title="Find Encrypted Documents">
+    ```
+    (type:pdf OR ext:docx OR ext:xlsx) AND encrypted:true
+    ```
+    Encrypted Office documents and PDFs
+  </Accordion>
+  
+  <Accordion title="Find Deleted Images">
+    ```
+    category:Images AND deleted:true
+    ```
+    All deleted image files
+  </Accordion>
+  
+  <Accordion title="Find Specific User's Documents">
+    ```
+    (author:"Jane Smith" OR lastModifiedBy:"Jane Smith") AND category:Documents
+    ```
+    Documents created or modified by specific user
+  </Accordion>
+  
+  <Accordion title="Find Files by Extension Pattern">
+    ```
+    name:*.tmp OR name:*.log OR name:*.bak
+    ```
+    Temporary, log, and backup files
+  </Accordion>
+  
+  <Accordion title="Find Carved Data">
+    ```
+    carved:true AND (category:Images OR category:Videos)
+    ```
+    Recovered multimedia from unallocated space
+  </Accordion>
+</AccordionGroup>
+
+## Search Performance Tips
+
+<CardGroup cols={2}>
+  <Card title="Optimize Queries" icon="gauge-high">
+    - Use specific field searches instead of content-only
+    - Avoid leading wildcards when possible
+    - Combine filters to narrow results early
+  </Card>
+  
+  <Card title="Index Optimization" icon="database">
+    - Content is indexed during processing
+    - Unknown files and unallocated space included
+    - Full-text search across supported formats
+  </Card>
+  
+  <Card title="Result Limits" icon="list-ol">
+    - By default, searches return maximum 10,000 results
+    - Use filters and sorting to refine large result sets
+    - Consider using bookmarks for working sets
+  </Card>
+  
+  <Card title="Special Searches" icon="star">
+    - Similar document search
+    - Similar image search
+    - Similar face recognition
+    - Available from context menus and gallery
+  </Card>
+</CardGroup>
+
+## Search History
+
+Access previous searches:
+
+1. Click the dropdown arrow on the search box
+2. Select from recent queries
+3. Edit and re-execute as needed
+
+<Info>
+  Search history is preserved between sessions and stored per case.
+</Info>
+
+## Saved Searches (Filters)
+
+Create reusable search queries:
+
+1. Click **Options** → **Filter Manager**
+2. Create named filters with Lucene queries
+3. Access saved filters from the Filter dropdown
+4. Combine multiple filters
+
+<Tip>
+  See the [Filtering](/analysis/filtering) guide for details on creating and managing custom filters.
+</Tip>
+
+## Special Search Features
+
+### Similar Document Search
+
+Find documents with similar content:
+
+1. Select a document
+2. Right-click → **Find Similar Documents**
+3. Adjust similarity threshold
+4. View results ranked by similarity score
+
+### Similar Image Search
+
+Find visually similar images:
+
+1. Select an image
+2. Right-click → **Find Similar Images**
+3. Results show perceptually similar images
+4. Useful for finding duplicates, edited versions
+
+### Similar Face Search
+
+Find images containing similar faces:
+
+1. Select an image with detected faces
+2. Right-click → **Find Similar Faces**
+3. Optimized face recognition algorithm
+4. Configurable similarity threshold
+
+<Note>
+  Face recognition and image similarity features must be enabled during case processing.
+</Note>
+
+## Troubleshooting Searches
+
+<AccordionGroup>
+  <Accordion title="No Results Found">
+    - Check for typos in search terms
+    - Try broader searches with wildcards
+    - Verify field names are correct
+    - Check if filters are applied
+  </Accordion>
+  
+  <Accordion title="Too Many Results">
+    - Add more specific search terms
+    - Use field-specific searches
+    - Apply date or size range filters
+    - Combine with category filters
+  </Accordion>
+  
+  <Accordion title="Query Syntax Errors">
+    - Check bracket and quote matching
+    - Escape special characters if needed
+    - Verify date format in range queries
+    - Review boolean operator usage
+  </Accordion>
+  
+  <Accordion title="Slow Searches">
+    - Avoid leading wildcards
+    - Use specific field searches
+    - Narrow date ranges
+    - Consider creating a filter
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Filtering" icon="filter" href="./filtering">
+    Learn to create and combine filters for complex analysis
+  </Card>
+  
+  <Card title="Bookmarks" icon="bookmark" href="./bookmarks">
+    Organize search results with bookmarks and tags
+  </Card>
+</CardGroup>

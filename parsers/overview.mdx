@@ -1,0 +1,235 @@
+---
+title: 'Parser Architecture'
+description: 'IPED parser framework for extracting and analyzing digital evidence'
+icon: 'file-code'
+---
+
+## Overview
+
+IPED uses a comprehensive parser framework built on top of **Apache Tika** to extract metadata and content from digital evidence. The parser architecture enables processing of diverse file formats, application artifacts, and embedded data structures commonly encountered in forensic investigations.
+
+## Apache Tika Integration
+
+IPED extends Apache Tika's parser framework to provide specialized forensic capabilities:
+
+<CardGroup cols={2}>
+  <Card title="Standard Tika Parsers" icon="file">
+    Office documents, PDFs, images, videos, and common file formats
+  </Card>
+  <Card title="Custom IPED Parsers" icon="fingerprint">
+    Chat applications, P2P clients, browser artifacts, and mobile data
+  </Card>
+  <Card title="SQLite Processing" icon="database">
+    Automated extraction from SQLite databases with schema detection
+  </Card>
+  <Card title="Embedded Document Extraction" icon="sitemap">
+    Recursive parsing of containers and embedded artifacts
+  </Card>
+</CardGroup>
+
+## Parser Categories
+
+IPED implements specialized parsers across multiple forensic domains:
+
+### Communication Artifacts
+- **Chat Applications**: WhatsApp, Telegram, Skype, Discord, Threema
+- **Email Clients**: PST, MBOX, DBX, MSG formats
+- **Social Media**: Facebook, Instagram, TikTok artifacts
+
+### Browser Forensics
+- **Chrome/Chromium**: History, downloads, searches, cache
+- **Firefox**: Places database, bookmarks, session data
+- **Safari**: SQLite and plist-based artifacts
+- **Edge/IE**: WebCacheV01.dat, index.dat files
+
+### P2P Applications
+- **BitTorrent**: Torrent files, resume.dat structures
+- **eMule**: known.met, part.met sharing records
+- **Shareaza**: Library.dat file catalogs
+- **Ares**: ShareH.dat and ShareL.dat databases
+
+### Mobile Artifacts
+- **UFDR Format**: Cellebrite extraction support
+- **AD1 Format**: AccessData image processing
+- **iOS**: Plist files, SQLite databases
+- **Android**: XML preferences, SQLite databases
+
+## Parser Architecture
+
+### Base Classes
+
+<CodeGroup>
+```java AbstractParser
+public abstract class AbstractParser implements Parser {
+    public abstract Set<MediaType> getSupportedTypes(ParseContext context);
+    public abstract void parse(InputStream stream, ContentHandler handler, 
+                              Metadata metadata, ParseContext context);
+}
+```
+
+```java SQLite3DBParser
+public class SQLite3DBParser extends AbstractParser {
+    protected Connection getConnection(InputStream stream, 
+                                      Metadata metadata, 
+                                      ParseContext context);
+    // Provides SQLite connection management
+}
+```
+</CodeGroup>
+
+### Key Components
+
+<ResponseField name="MediaType" type="string">
+  Identifies file types for parser selection (e.g., `application/x-whatsapp-db`)
+</ResponseField>
+
+<ResponseField name="ParseContext" type="object">
+  Provides access to searcher, item metadata, and configuration
+</ResponseField>
+
+<ResponseField name="ContentHandler" type="SAX handler">
+  Receives parsed content as HTML or structured events
+</ResponseField>
+
+<ResponseField name="Metadata" type="key-value store">
+  Stores extracted properties using standardized property names
+</ResponseField>
+
+<ResponseField name="EmbeddedDocumentExtractor" type="interface">
+  Handles recursive extraction of embedded artifacts
+</ResponseField>
+
+## Metadata Extraction
+
+IPED parsers extract standardized metadata properties:
+
+### Communication Properties
+```java
+ExtraProperties.USER_ACCOUNT
+ExtraProperties.USER_NAME
+ExtraProperties.USER_PHONE
+ExtraProperties.MESSAGE_DATE
+ExtraProperties.MESSAGE_BODY
+ExtraProperties.PARTICIPANTS
+ExtraProperties.LINKED_ITEMS
+```
+
+### P2P Properties
+```java
+ExtraProperties.P2P_META_PREFIX + "torrentInfoHash"
+ExtraProperties.SHARED_HASHES
+ExtraProperties.P2P_REGISTRY_COUNT
+ExtraProperties.CSAM_HASH_HITS
+```
+
+### Browser Properties
+```java
+ExtraProperties.URL
+ExtraProperties.VISIT_DATE
+ExtraProperties.DOWNLOAD_DATE
+ExtraProperties.LOCAL_PATH
+```
+
+## Parser Configuration
+
+Parsers support configuration through Tika annotations:
+
+```java
+@Field
+public void setExtractMessages(boolean extractMessages) {
+    this.extractMessages = extractMessages;
+}
+
+@Field
+public void setMergeBackups(boolean mergeBackups) {
+    this.mergeBackups = mergeBackups;
+}
+
+@Field
+public void setMinChatSplitSize(int minChatSplitSize) {
+    this.minChatSplitSize = minChatSplitSize;
+}
+```
+
+## HTML Report Generation
+
+Most parsers generate HTML reports for visualization:
+
+```java
+XHTMLContentHandler xhtml = new XHTMLContentHandler(handler, metadata);
+xhtml.startDocument();
+xhtml.startElement("table");
+// Generate structured HTML output
+xhtml.endElement("table");
+xhtml.endDocument();
+```
+
+<Info>
+HTML reports include CSS styling, hyperlinks to related items, and structured data presentation for analysis interface integration.
+</Info>
+
+## Item Linking
+
+Parsers can link artifacts to case items using various strategies:
+
+### Hash-Based Linking
+```java
+if (Util.isValidHash(m.getMediaHash())) {
+    metadata.add(ExtraProperties.LINKED_ITEMS, 
+                BasicProps.HASH + ":" + m.getMediaHash());
+    if (m.isFromMe())
+        metadata.add(ExtraProperties.SHARED_HASHES, m.getMediaHash());
+}
+```
+
+### Query-Based Linking
+```java
+String query = BasicProps.LENGTH + ":" + fileSize + 
+               " && " + BasicProps.NAME + ":\"" + fileName + "\"";
+metadata.add(ExtraProperties.LINKED_ITEMS, query);
+```
+
+## Parser Examples
+
+See the following pages for detailed parser documentation:
+
+<CardGroup cols={2}>
+  <Card title="Chat Applications" icon="comments" href="/parsers/chat-applications">
+    WhatsApp, Telegram, Skype parsers
+  </Card>
+  <Card title="Web Browsers" icon="browser" href="/parsers/browsers">
+    Chrome, Firefox, Safari, Edge parsers
+  </Card>
+  <Card title="P2P Applications" icon="share-nodes" href="/parsers/p2p-applications">
+    BitTorrent, eMule, Shareaza, Ares parsers
+  </Card>
+  <Card title="Mobile Artifacts" icon="mobile" href="/parsers/mobile-artifacts">
+    UFDR and mobile data parsers
+  </Card>
+</CardGroup>
+
+## Performance Considerations
+
+<Warning>
+Large chat databases with merge operations can be memory-intensive. Configure `minChatSplitSize` to control report fragmentation.
+</Warning>
+
+### Optimization Features
+- **Deleted Record Recovery**: Optional scanning of SQLite free pages
+- **Backup Merging**: Combines multiple backup databases
+- **Batch Processing**: Searches performed in batches to reduce overhead
+- **Parallel Processing**: Multi-threaded parsing where applicable
+
+## Next Steps
+
+<Steps>
+  <Step title="Explore Chat Parsers">
+    Learn about [WhatsApp, Telegram, and Skype parsing](/parsers/chat-applications)
+  </Step>
+  <Step title="Browser Artifacts">
+    Understand [browser history and download extraction](/parsers/browsers)
+  </Step>
+  <Step title="P2P Forensics">
+    Examine [peer-to-peer application parsers](/parsers/p2p-applications)
+  </Step>
+</Steps>

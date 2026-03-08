@@ -1,0 +1,413 @@
+---
+title: 'Chat Application Parsers'
+description: 'Extract and analyze WhatsApp, Telegram, Skype, and other messaging artifacts'
+icon: 'comments'
+---
+
+## Overview
+
+IPED provides comprehensive parsers for popular messaging applications, extracting messages, contacts, media attachments, and communication metadata. These parsers handle both Android and iOS artifacts, including encrypted databases and backup files.
+
+## WhatsApp Parser
+
+The WhatsApp parser processes SQLite databases from Android and iOS devices, extracting complete chat histories with media linking.
+
+### Supported Artifacts
+
+<ResponseField name="msgstore.db.crypt*" type="Android Database">
+  Main message database (supports crypt1-crypt15 encryption)
+</ResponseField>
+
+<ResponseField name="wa.db" type="Android Database">
+  Contacts and account information
+</ResponseField>
+
+<ResponseField name="ChatStorage.sqlite" type="iOS Database">
+  iOS message database
+</ResponseField>
+
+<ResponseField name="ContactsV2.sqlite" type="iOS Database">
+  iOS contacts database
+</ResponseField>
+
+<ResponseField name="com.whatsapp_preferences.xml" type="Android XML">
+  Account configuration and user information
+</ResponseField>
+
+### Extracted Metadata
+
+```java WhatsApp Message Properties
+ExtraProperties.USER_ACCOUNT          // Phone number with country code
+ExtraProperties.USER_NAME             // Display name
+ExtraProperties.USER_PHONE            // International format (+55...)
+ExtraProperties.MESSAGE_DATE          // Timestamp
+ExtraProperties.MESSAGE_BODY          // Text content
+ExtraProperties.PARTICIPANTS          // Chat participants
+ExtraProperties.IS_GROUP_MESSAGE      // Group chat indicator
+ExtraProperties.GROUP_ID              // Format: creator-timestamp@g.us
+ExtraProperties.LINKED_ITEMS          // SHA-256 hash queries for media
+ExtraProperties.SHARED_HASHES         // Hashes of sent media
+```
+
+### Features
+
+<CardGroup cols={2}>
+  <Card title="Backup Merging" icon="layer-group">
+    Automatically merges multiple backup databases to recover deleted messages
+  </Card>
+  <Card title="Media Linking" icon="link">
+    Links messages to media files using SHA-256 hashes with fallback strategies
+  </Card>
+  <Card title="Deleted Recovery" icon="trash-arrow-up">
+    Scans SQLite free pages to recover deleted messages and chats
+  </Card>
+  <Card title="Status Messages" icon="clock">
+    Extracts and expands broadcast status messages per contact
+  </Card>
+</CardGroup>
+
+### Configuration Options
+
+```java WhatsAppParser Configuration
+@Field
+public void setExtractMessages(boolean extractMessages);
+// Extract individual message items (default: true)
+
+@Field
+public void setMergeBackups(boolean mergeBackups);
+// Merge msgstore backup databases (default: false)
+
+@Field
+public void setRecoverDeletedRecords(boolean recoverDeletedRecords);
+// Scan free pages for deleted data (default: true)
+
+@Field
+public void setMinChatSplitSize(int minChatSplitSize);
+// Split large chats into fragments (default: 6000000 bytes)
+
+@Field
+public void setLinkMediasByNameAndApproxSizeFallback(boolean enable);
+// Use filename matching as fallback (default: true)
+```
+
+### Message Types
+
+<Accordion title="Supported WhatsApp Message Types">
+  - **TEXT_MESSAGE**: Plain text messages
+  - **IMAGE_MESSAGE**: Photos and images
+  - **VIDEO_MESSAGE**: Video files
+  - **AUDIO_MESSAGE**: Voice messages and audio
+  - **DOCUMENT_MESSAGE**: PDF, Office, and other documents
+  - **LOCATION_MESSAGE**: GPS coordinates
+  - **SHARE_LOCATION_MESSAGE**: Live location sharing
+  - **CONTACT_MESSAGE**: vCard contacts
+  - **STICKER_MESSAGE**: Sticker attachments
+  - **CALL_MESSAGE**: Voice and video calls
+  - **DELETED_MESSAGE**: Deleted by sender
+  - **SYSTEM_MESSAGE**: Group notifications and events
+</Accordion>
+
+### Media Linking Strategy
+
+```java Media Linking Process
+1. SHA-256 Hash Matching (Primary)
+   - Extracts media_hash from message database
+   - Searches case items: hash:"sha-256" = <media_hash>
+
+2. Filename + Size Fallback
+   - Matches filename and approximate file size
+   - Used when hash not available
+
+3. Long Path Fallback
+   - Searches by full WhatsApp media path
+   - Configurable via linkMediasByLongPathFallback
+```
+
+## Telegram Parser
+
+Processes Telegram databases from Android and iOS with support for channels, groups, and secret chats.
+
+### Supported Artifacts
+
+<ResponseField name="cache4.db" type="Android Database">
+  Main Telegram message database
+</ResponseField>
+
+<ResponseField name="userconfing.xml" type="Android XML">
+  User account configuration (base64-encoded)
+</ResponseField>
+
+<ResponseField name="*.sqlite" type="iOS Database">
+  iOS Telegram databases
+</ResponseField>
+
+### Extracted Metadata
+
+```java Telegram Message Properties
+ExtraProperties.USER_ACCOUNT          // Username
+ExtraProperties.USER_NAME             // Full name
+ExtraProperties.USER_PHONE            // Phone number
+ExtraProperties.MESSAGE_DATE          // Message timestamp
+ExtraProperties.MESSAGE_BODY          // Text content
+ExtraProperties.LOCATIONS             // GPS coordinates (lat;lon)
+ExtraProperties.IS_GROUP_MESSAGE      // Group/channel indicator
+ExtraProperties.LINKED_ITEMS          // Media hash queries
+```
+
+### Chat Types
+
+<AccordionGroup>
+  <Accordion title="Private Chats">
+    One-on-one conversations between users
+  </Accordion>
+  <Accordion title="Groups">
+    Multi-user group conversations with members list
+  </Accordion>
+  <Accordion title="Channels">
+    Broadcast channels with subscriber information
+  </Accordion>
+  <Accordion title="Secret Chats">
+    End-to-end encrypted conversations (when available)
+  </Accordion>
+</AccordionGroup>
+
+### Configuration
+
+```java TelegramParser Configuration
+@Field
+public void setExtractMessages(boolean extractMessages);
+// Extract individual messages (default: true)
+
+@Field
+public void setMinChatSplitSize(int minChatSplitSize);
+// Chat fragmentation threshold (default: 6000000)
+
+@Field
+public void setEnabledForUfdr(boolean enable);
+// Enable for UFDR extractions (default: false)
+```
+
+## Skype Parser
+
+Extracts conversations, contacts, file transfers, and call logs from Skype main.db files.
+
+### Supported Artifacts
+
+<ResponseField name="main.db" type="SQLite Database">
+  Skype conversation and contact database (versions 7 and 12)
+</ResponseField>
+
+### Extracted Data
+
+<Tabs>
+  <Tab title="Conversations">
+    ```java Skype Conversation Metadata
+    TikaCoreProperties.CREATED          // Chat creation date
+    TikaCoreProperties.MODIFIED         // Last activity
+    ExtraProperties.ITEM_VIRTUAL_ID     // Conversation ID
+    ExtraProperties.PARTICIPANTS        // Participant list
+    ExtraProperties.LINKED_ITEMS        // Attachment hashes
+    ExtraProperties.SHARED_HASHES       // Sent file hashes
+    ```
+  </Tab>
+  <Tab title="Messages">
+    ```java Skype Message Properties
+    ExtraProperties.MESSAGE_DATE        // Timestamp
+    ExtraProperties.MESSAGE_BODY        // Content
+    Metadata.MESSAGE_FROM               // Sender
+    Metadata.MESSAGE_TO                 // Recipient
+    ExtraProperties.PARENT_VIRTUAL_ID   // Conversation ID
+    messageStatus                       // Delivery status
+    sendingStatus                       // Send status
+    ```
+  </Tab>
+  <Tab title="File Transfers">
+    ```java File Transfer Metadata
+    TikaCoreProperties.CREATED          // Transfer start
+    TikaCoreProperties.MODIFIED         // Transfer complete
+    ExtraProperties.MESSAGE_BODY        // Filename
+    ExtraProperties.LINKED_ITEMS        // File hash query
+    ExtraProperties.SHARED_HASHES       // Outgoing files
+    ```
+  </Tab>
+  <Tab title="Contacts">
+    ```java Contact Properties
+    ExtraProperties.USER_NAME           // Display name
+    ExtraProperties.USER_ACCOUNT        // Skype username
+    ExtraProperties.USER_EMAIL          // Email address
+    ExtraProperties.USER_PHONE          // Phone numbers
+    ExtraProperties.USER_BIRTH          // Birthday
+    ExtraProperties.USER_ADDRESS        // Location
+    ExtraProperties.THUMBNAIL_BASE64    // Avatar image
+    ```
+  </Tab>
+</Tabs>
+
+### Configuration
+
+```java SkypeParser Configuration
+@Field
+public void setExtractMessages(boolean extractMessages);
+// Extract individual messages (default: true)
+```
+
+## Discord Parser
+
+Processes Discord Local Storage databases extracting messages from cached channels.
+
+### Supported Artifacts
+
+<ResponseField name="*.ldb" type="LevelDB Files">
+  Discord Local Storage cache files
+</ResponseField>
+
+<Info>
+Discord parser extracts cached messages from Local Storage. Complete history requires data acquisition during active sessions.
+</Info>
+
+## Threema Parser
+
+Extracts messages from Threema SQLite databases.
+
+### Supported Artifacts
+
+<ResponseField name="threema*.db" type="SQLite Database">
+  Threema message and contact databases
+</ResponseField>
+
+## UFDR Chat Parser
+
+Processes chats extracted by Cellebrite UFDR (Universal Forensic Data Reader) from various applications.
+
+### Supported Applications
+
+<CardGroup cols={3}>
+  <Card title="WhatsApp" icon="whatsapp">
+    UFDR WhatsApp extractions
+  </Card>
+  <Card title="Telegram" icon="telegram">
+    UFDR Telegram extractions
+  </Card>
+  <Card title="Facebook" icon="facebook">
+    Facebook Messenger
+  </Card>
+  <Card title="Signal" icon="shield">
+    Signal messages
+  </Card>
+  <Card title="Snapchat" icon="snapchat">
+    Snapchat conversations
+  </Card>
+  <Card title="Instagram" icon="instagram">
+    Instagram DMs
+  </Card>
+  <Card title="Viber" icon="mobile">
+    Viber messages
+  </Card>
+  <Card title="TikTok" icon="video">
+    TikTok chats
+  </Card>
+  <Card title="Discord" icon="discord">
+    Discord messages
+  </Card>
+</CardGroup>
+
+### Configuration
+
+```java UfedChatParser Configuration
+@Field
+public void setExtractMessages(boolean extractMessages);
+// Extract individual messages (default: true)
+
+@Field
+public void setExtractActivityLogs(boolean extractActivityLogs);
+// Extract activity log events (default: true)
+
+@Field
+public void setIgnoreEmptyChats(boolean ignoreEmptyChats);
+// Skip chats with no user messages (default: false)
+
+@Field
+public void setMinChatSplitSize(int minChatSplitSize);
+// Chat fragmentation size (default: 6000000)
+```
+
+## Common Features
+
+### Child Porn Hash Detection
+
+All chat parsers integrate with hash databases:
+
+```java Hash Detection
+List<String> hashSets = ChildPornHashLookup.lookupHash(mediaHash);
+if (!hashSets.isEmpty()) {
+    metadata.set(ExtraProperties.HASHDB_STATUS, "pedo");
+    for (String set : hashSets) {
+        metadata.add(ExtraProperties.HASHDB_SET, set);
+    }
+}
+```
+
+<Warning>
+IPED includes PhotoDNA support for law enforcement agencies. Contact the IPED team for access.
+</Warning>
+
+### Avatar Extraction
+
+Profile pictures are extracted and stored as base64:
+
+```java
+if (account.getAvatar() != null) {
+    metadata.set(ExtraProperties.THUMBNAIL_BASE64, 
+                Base64.getEncoder().encodeToString(account.getAvatar()));
+}
+```
+
+### Location Data
+
+GPS coordinates are standardized:
+
+```java
+if (message.getLatitude() != null && message.getLongitude() != null) {
+    metadata.set(ExtraProperties.LOCATIONS, 
+                message.getLatitude() + ";" + message.getLongitude());
+}
+```
+
+## HTML Report Structure
+
+Chat reports include:
+
+- **Chat header**: Participants, group info, creation date
+- **Message table**: Chronological message list with timestamps
+- **Media thumbnails**: Inline previews when available
+- **System messages**: Group events, security notifications
+- **Contact cards**: vCard information rendering
+- **Location maps**: GPS coordinate visualization
+
+## Best Practices
+
+<Steps>
+  <Step title="Enable SHA-256 Hashing">
+    Set `IsSha256Enabled=true` to enable media linking via hash matching
+  </Step>
+  <Step title="Configure Hash Task">
+    Enable `IsHashTaskEnabled=true` for attachment correlation
+  </Step>
+  <Step title="Consider Backup Merging">
+    Enable `mergeBackups` for WhatsApp when multiple backup files exist
+  </Step>
+  <Step title="Monitor Memory Usage">
+    Large merged databases can require significant memory resources
+  </Step>
+</Steps>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Browser Parsers" icon="browser" href="/parsers/browsers">
+    Learn about web browser artifact extraction
+  </Card>
+  <Card title="P2P Parsers" icon="share-nodes" href="/parsers/p2p-applications">
+    Explore peer-to-peer application parsers
+  </Card>
+</CardGroup>

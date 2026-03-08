@@ -1,0 +1,191 @@
+---
+title: Introduction
+description: IPED - Digital Evidence Processor and Indexer
+---
+
+## What is IPED?
+
+IPED (Indexador e Processador de Evidências Digitais) is an open source digital forensics tool that can be used to process and analyze digital evidence, often seized at crime scenes by law enforcement or in corporate investigations by private examiners.
+
+<Note>
+IPED is developed by digital forensic experts from the Brazilian Federal Police since 2012 and has been open source since 2019.
+</Note>
+
+## Key Characteristics
+
+<CardGroup cols={2}>
+  <Card title="Command Line Processing" icon="terminal">
+    Batch case creation with efficient data processing for production environments
+  </Card>
+  <Card title="Multiplatform Support" icon="laptop">
+    Tested on Windows and Linux systems with portable cases
+  </Card>
+  <Card title="High Performance" icon="gauge-high">
+    Up to 400GB/h processing speed on modern hardware with multithread support
+  </Card>
+  <Card title="Integrated Analysis" icon="magnifying-glass">
+    Intuitive analysis interface with advanced search and visualization
+  </Card>
+</CardGroup>
+
+## Core Capabilities
+
+IPED provides comprehensive digital forensics functionality:
+
+### Evidence Processing
+
+- **Hash Computation**: MD5, SHA-1, SHA-256, SHA-512, and eDonkey
+- **Hash Databases**: NIST NSRL, NIST CAID, ProjectVIC, Interpol ICSE, CSV format
+- **File Signatures**: Automatic file type detection and categorization
+- **Container Expansion**: Recursive expansion of dozens of file formats
+- **Disk Image Support**: DD/RAW, E01, EX01, ISO9660, AFF, VHD, VHDX, VMDK, AD1 (AccessData), UFDR (Cellebrite)
+
+### Advanced Analysis
+
+<Accordion title="Multimedia Processing">
+  - Image and video gallery for hundreds of formats
+  - Video thumbnail extraction and frame analysis
+  - OCR powered by Tesseract 5
+  - Nudity detection using random forests and deep learning
+  - Face recognition and similar face search
+</Accordion>
+
+<Accordion title="Text Analysis">
+  - Full-text indexing with Lucene 9.2.0
+  - Regular expression searches (emails, URLs, IPs, credit cards, crypto wallets)
+  - Language detection for 70+ languages
+  - Named Entity Recognition (with Stanford CoreNLP)
+  - Audio transcription (local and cloud services)
+</Accordion>
+
+<Accordion title="Communication Analysis">
+  - WhatsApp, Telegram, Skype parser support
+  - Browser history (IE, Edge, Firefox, Chrome, Safari)
+  - Email processing (PST, OST, EML, MBOX)
+  - Graph analysis for communications
+  - Timeline visualization
+</Accordion>
+
+<Accordion title="Data Recovery">
+  - Efficient data carving engine (40+ file formats)
+  - Carved data from unallocated space
+  - Encryption detection
+  - Deleted file recovery
+</Accordion>
+
+## Architecture
+
+IPED is built using Java 11 and consists of several modular components:
+
+```java
+// Main processing entry point
+package iped.app.processing;
+
+public class Main {
+    // Initialize processing manager
+    manager = new Manager(dataSource, output, keywords);
+    manager.process();
+}
+```
+
+The architecture includes:
+
+- **iped-engine**: Core processing engine with task pipeline
+- **iped-parsers**: File format parsers based on Apache Tika
+- **iped-app**: GUI application for case analysis
+- **iped-carvers**: Data carving implementations
+- **iped-geo**: Geolocation and mapping features
+
+## Technology Stack
+
+<CodeGroup>
+```xml pom.xml
+<properties>
+    <maven.compiler.source>11</maven.compiler.source>
+    <maven.compiler.target>11</maven.compiler.target>
+    <tika.version>2.4.0</tika.version>
+    <lucene.version>9.2.0</lucene.version>
+    <sleuthkit.version>4.12.0.p1</sleuthkit.version>
+    <pdfbox.version>2.0.27</pdfbox.version>
+</properties>
+```
+</CodeGroup>
+
+### Key Dependencies
+
+- **Apache Tika 2.4.0**: File parsing and content extraction
+- **Apache Lucene 9.2.0**: Full-text indexing and search
+- **Sleuthkit 4.12.0**: Disk image and file system decoding
+- **Apache PDFBox 2.0.27**: PDF processing
+- **JavaFX**: GUI components
+
+## Processing Profiles
+
+IPED includes several pre-configured processing profiles:
+
+| Profile | Description | Use Case |
+|---------|-------------|----------|
+| **forensic** | Complete forensic analysis | Full investigation |
+| **pedo** | CSAM-focused processing | Child exploitation cases |
+| **triage** | Quick analysis | Initial assessment |
+| **fastmode** | Preview mode | Rapid case preview |
+| **blind** | Automatic extraction | Automated data extraction |
+
+## Performance
+
+<Note>
+IPED has been tested with cases containing up to **135 million items** and achieves processing speeds up to **400GB/h** on modern hardware with proper configuration.
+</Note>
+
+Performance characteristics:
+- Multithread processing with configurable worker count
+- Out-of-process file parsing for stability
+- Support for resuming interrupted processing
+- Efficient memory usage with streaming
+
+## Output Formats
+
+IPED can generate multiple output formats:
+
+- **Indexed Case**: Searchable case database with Lucene index
+- **HTML Reports**: Portable HTML reports with tagged items
+- **CSV Exports**: File listings and metadata
+- **Portable Cases**: Self-contained cases that run from removable drives
+- **ElasticSearch/OpenSearch**: Integration for distributed search
+- **MinIO**: Object storage export
+
+## Use Cases
+
+<Steps>
+  <Step title="Law Enforcement">
+    Process seized devices and storage media in criminal investigations
+  </Step>
+  <Step title="Corporate Investigations">
+    Analyze employee devices for policy violations or data theft
+  </Step>
+  <Step title="Incident Response">
+    Examine compromised systems for evidence of intrusion
+  </Step>
+  <Step title="E-Discovery">
+    Process and search large document collections for legal cases
+  </Step>
+</Steps>
+
+## License
+
+IPED is free and open source software licensed under **GNU General Public License v3.0**.
+
+```java
+/*
+ * This file is part of Indexador e Processador de Evidências Digitais (IPED).
+ *
+ * IPED is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ */
+```
+
+## Getting Started
+
+Ready to start using IPED? Check out the [Installation](/installation) guide to build IPED from source, or jump to the [Quick Start](/quickstart) guide to process your first case.

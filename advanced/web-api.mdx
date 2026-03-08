@@ -1,0 +1,763 @@
+---
+title: Web API
+description: Access IPED cases remotely through REST API endpoints
+---
+
+IPED includes a Web API that allows remote access to processed cases. You can search cases, retrieve document metadata and content, manage bookmarks, and more through HTTP REST endpoints.
+
+## Overview
+
+The Web API provides programmatic access to:
+- Search across one or more cases
+- Retrieve document properties and metadata
+- Download document content and text
+- Get thumbnails and previews
+- Manage bookmarks and tags
+- List available data sources
+
+<Note>
+The Web API accesses already processed cases. You cannot trigger processing through the API.
+</Note>
+
+## Starting the Web API Server
+
+The Web API server must be started separately:
+
+```bash
+java -jar iped-web-api.jar --sources sources.json --port 8080
+```
+
+### Configuration
+
+Create a `sources.json` file listing your cases:
+
+```json sources.json
+[
+  {
+    "id": "case1",
+    "path": "/data/cases/case1"
+  },
+  {
+    "id": "case2",
+    "path": "/data/cases/case2"
+  }
+]
+```
+
+### Command-Line Options
+
+| Option | Description | Default |
+|--------|-------------|--------|
+| `--sources` | Path to sources JSON file or URL | Required |
+| `--port` | HTTP port to bind | 8080 |
+| `--host` | Host address to bind | 0.0.0.0 |
+
+## API Endpoints
+
+### Base URL
+
+All endpoints are relative to: `http://localhost:8080/`
+
+### Authentication
+
+<Warning>
+The current implementation does not include authentication. Deploy behind a reverse proxy with authentication for production use.
+</Warning>
+
+## Search
+
+### Search Documents
+
+Search for documents across all sources or within a specific source.
+
+<CodeGroup>
+```bash cURL
+# Search all sources
+curl "http://localhost:8080/search?q=password"
+
+# Search specific source
+curl "http://localhost:8080/search?q=password&sourceID=case1"
+```
+
+```python Python
+import requests
+
+# Search all sources
+response = requests.get(
+    "http://localhost:8080/search",
+    params={"q": "password"}
+)
+results = response.json()
+
+# Search specific source
+response = requests.get(
+    "http://localhost:8080/search",
+    params={
+        "q": "password",
+        "sourceID": "case1"
+    }
+)
+results = response.json()
+```
+
+```javascript JavaScript
+// Search all sources
+const response = await fetch(
+  "http://localhost:8080/search?q=password"
+);
+const results = await response.json();
+
+// Search specific source
+const response = await fetch(
+  "http://localhost:8080/search?q=password&sourceID=case1"
+);
+const results = await response.json();
+```
+</CodeGroup>
+
+**Query Parameters:**
+- `q` (required) - Lucene query string
+- `sourceID` (optional) - Limit search to specific source
+
+**Response:**
+```json
+{
+  "docs": [
+    {
+      "source": "case1",
+      "id": 12345
+    },
+    {
+      "source": "case2",
+      "id": 67890
+    }
+  ]
+}
+```
+
+### Query Syntax
+
+IPED uses Lucene query syntax:
+
+```bash
+# Search by content
+curl "http://localhost:8080/search?q=bitcoin"
+
+# Search by file type
+curl "http://localhost:8080/search?q=type:pdf"
+
+# Search by extension
+curl "http://localhost:8080/search?q=ext:docx"
+
+# Boolean operators
+curl "http://localhost:8080/search?q=password+AND+admin"
+curl "http://localhost:8080/search?q=type:image+NOT+category:system"
+
+# Wildcards
+curl "http://localhost:8080/search?q=pass*"
+
+# Phrase search
+curl "http://localhost:8080/search?q=\"social+security+number\""
+
+# Date ranges
+curl "http://localhost:8080/search?q=modified:[2023-01-01+TO+2023-12-31]"
+```
+
+## Documents
+
+### Get Document Properties
+
+Retrieve all metadata and properties for a document.
+
+<CodeGroup>
+```bash cURL
+curl "http://localhost:8080/sources/case1/docs/12345"
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    "http://localhost:8080/sources/case1/docs/12345"
+)
+doc = response.json()
+
+print(f"Name: {doc['properties']['name'][0]}")
+print(f"Size: {doc['properties']['length'][0]}")
+print(f"Hash: {doc['properties']['hash'][0]}")
+```
+
+```javascript JavaScript
+const response = await fetch(
+  "http://localhost:8080/sources/case1/docs/12345"
+);
+const doc = await response.json();
+
+console.log(`Name: ${doc.properties.name[0]}`);
+console.log(`Size: ${doc.properties.length[0]}`);
+console.log(`Hash: ${doc.properties.hash[0]}`);
+```
+</CodeGroup>
+
+**Response:**
+```json
+{
+  "source": "case1",
+  "id": 12345,
+  "luceneId": 98765,
+  "properties": {
+    "name": ["document.pdf"],
+    "length": ["1048576"],
+    "hash": ["abc123def456..."],
+    "type": ["pdf"],
+    "category": ["Documents"],
+    "modified": ["2023-05-15T10:30:00Z"],
+    "path": ["/evidence/docs/document.pdf"],
+    "contentType": ["application/pdf"],
+    "author": ["John Doe"],
+    "title": ["Financial Report"]
+  },
+  "bookmarks": ["Important", "Financial"],
+  "selected": true
+}
+```
+
+### Get Document Text
+
+Retrieve the extracted text content of a document.
+
+<CodeGroup>
+```bash cURL
+curl "http://localhost:8080/sources/case1/docs/12345/text"
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    "http://localhost:8080/sources/case1/docs/12345/text"
+)
+text = response.text
+print(text)
+```
+
+```javascript JavaScript
+const response = await fetch(
+  "http://localhost:8080/sources/case1/docs/12345/text"
+);
+const text = await response.text();
+console.log(text);
+```
+</CodeGroup>
+
+**Response:** Plain text (UTF-8)
+
+### Get Document Content
+
+Download the raw file content.
+
+<CodeGroup>
+```bash cURL
+curl "http://localhost:8080/sources/case1/docs/12345/content" -o file.pdf
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    "http://localhost:8080/sources/case1/docs/12345/content"
+)
+
+with open("file.pdf", "wb") as f:
+    f.write(response.content)
+```
+
+```javascript JavaScript
+const response = await fetch(
+  "http://localhost:8080/sources/case1/docs/12345/content"
+);
+const blob = await response.blob();
+
+// Save to file in browser
+const url = window.URL.createObjectURL(blob);
+const a = document.createElement('a');
+a.href = url;
+a.download = 'file.pdf';
+a.click();
+```
+</CodeGroup>
+
+**Response:** Binary file content with appropriate Content-Type header
+
+### Get Document Thumbnail
+
+Retrieve a thumbnail image of the document.
+
+```bash
+curl "http://localhost:8080/sources/case1/docs/12345/thumb" -o thumb.jpg
+```
+
+**Response:** JPEG image
+
+## Sources
+
+### List Sources
+
+Get all available data sources.
+
+<CodeGroup>
+```bash cURL
+curl "http://localhost:8080/sources"
+```
+
+```python Python
+import requests
+
+response = requests.get("http://localhost:8080/sources")
+sources = response.json()
+
+for source in sources['data']:
+    print(f"{source['id']}: {source['path']}")
+```
+
+```javascript JavaScript
+const response = await fetch("http://localhost:8080/sources");
+const sources = await response.json();
+
+sources.data.forEach(source => {
+  console.log(`${source.id}: ${source.path}`);
+});
+```
+</CodeGroup>
+
+**Response:**
+```json
+{
+  "data": [
+    {
+      "id": "case1",
+      "path": "/data/cases/case1"
+    },
+    {
+      "id": "case2",
+      "path": "/data/cases/case2"
+    }
+  ]
+}
+```
+
+### Get Source Details
+
+Get information about a specific source.
+
+```bash
+curl "http://localhost:8080/sources/case1"
+```
+
+**Response:**
+```json
+{
+  "id": "case1",
+  "path": "/data/cases/case1"
+}
+```
+
+### Add Source
+
+Dynamically add a new data source.
+
+<CodeGroup>
+```bash cURL
+curl -X POST "http://localhost:8080/sources" \
+  -H "Content-Type: application/json" \
+  -d '{"id": "case3", "path": "/data/cases/case3"}'
+```
+
+```python Python
+import requests
+
+response = requests.post(
+    "http://localhost:8080/sources",
+    json={
+        "id": "case3",
+        "path": "/data/cases/case3"
+    }
+)
+```
+
+```javascript JavaScript
+const response = await fetch("http://localhost:8080/sources", {
+  method: "POST",
+  headers: {"Content-Type": "application/json"},
+  body: JSON.stringify({
+    id: "case3",
+    path: "/data/cases/case3"
+  })
+});
+```
+</CodeGroup>
+
+## Bookmarks
+
+### List Bookmarks
+
+Get all bookmark names.
+
+```bash
+curl "http://localhost:8080/bookmarks"
+```
+
+**Response:**
+```json
+{
+  "data": [
+    "Important",
+    "Suspicious",
+    "Evidence",
+    "Review"
+  ]
+}
+```
+
+### Get Bookmark Documents
+
+Retrieve all documents with a specific bookmark.
+
+```bash
+curl "http://localhost:8080/bookmarks/Important"
+```
+
+**Response:**
+```json
+{
+  "docs": [
+    {
+      "source": "case1",
+      "id": 12345
+    },
+    {
+      "source": "case1",
+      "id": 67890
+    }
+  ]
+}
+```
+
+### Create Bookmark
+
+Create a new bookmark.
+
+<CodeGroup>
+```bash cURL
+curl -X POST "http://localhost:8080/bookmarks/Evidence"
+```
+
+```python Python
+import requests
+
+response = requests.post(
+    "http://localhost:8080/bookmarks/Evidence"
+)
+```
+
+```javascript JavaScript
+const response = await fetch(
+  "http://localhost:8080/bookmarks/Evidence",
+  {method: "POST"}
+);
+```
+</CodeGroup>
+
+### Add Documents to Bookmark
+
+Tag documents with a bookmark.
+
+<CodeGroup>
+```bash cURL
+curl -X PUT "http://localhost:8080/bookmarks/Evidence/add" \
+  -H "Content-Type: application/json" \
+  -d '[
+    {"source": "case1", "id": 12345},
+    {"source": "case1", "id": 67890}
+  ]'
+```
+
+```python Python
+import requests
+
+response = requests.put(
+    "http://localhost:8080/bookmarks/Evidence/add",
+    json=[
+        {"source": "case1", "id": 12345},
+        {"source": "case1", "id": 67890}
+    ]
+)
+```
+
+```javascript JavaScript
+const response = await fetch(
+  "http://localhost:8080/bookmarks/Evidence/add",
+  {
+    method: "PUT",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify([
+      {source: "case1", id: 12345},
+      {source: "case1", id: 67890}
+    ])
+  }
+);
+```
+</CodeGroup>
+
+### Remove Documents from Bookmark
+
+Untag documents from a bookmark.
+
+```bash
+curl -X PUT "http://localhost:8080/bookmarks/Evidence/remove" \
+  -H "Content-Type: application/json" \
+  -d '[{"source": "case1", "id": 12345}]'
+```
+
+### Delete Bookmark
+
+Remove a bookmark entirely.
+
+```bash
+curl -X DELETE "http://localhost:8080/bookmarks/Evidence"
+```
+
+### Rename Bookmark
+
+Rename an existing bookmark.
+
+```bash
+curl -X PUT "http://localhost:8080/bookmarks/OldName/rename/NewName"
+```
+
+## Categories
+
+List available file categories.
+
+```bash
+curl "http://localhost:8080/categories"
+```
+
+**Response:**
+```json
+{
+  "data": [
+    "Documents",
+    "Images",
+    "Videos",
+    "Audio",
+    "Emails",
+    "Databases",
+    "Executables"
+  ]
+}
+```
+
+## Complete Example: Search and Export
+
+Here's a complete example that searches for documents and exports their text:
+
+<CodeGroup>
+```python Python
+import requests
+import os
+
+# Configuration
+API_BASE = "http://localhost:8080"
+QUERY = "type:pdf AND password"
+OUTPUT_DIR = "exported_docs"
+
+# Create output directory
+os.makedirs(OUTPUT_DIR, exist_ok=True)
+
+# Search for documents
+response = requests.get(
+    f"{API_BASE}/search",
+    params={"q": QUERY}
+)
+search_results = response.json()
+
+print(f"Found {len(search_results['docs'])} documents")
+
+# Process each document
+for doc_ref in search_results['docs']:
+    source = doc_ref['source']
+    doc_id = doc_ref['id']
+    
+    # Get document properties
+    doc_response = requests.get(
+        f"{API_BASE}/sources/{source}/docs/{doc_id}"
+    )
+    doc = doc_response.json()
+    
+    name = doc['properties']['name'][0]
+    print(f"Processing: {name}")
+    
+    # Get document text
+    text_response = requests.get(
+        f"{API_BASE}/sources/{source}/docs/{doc_id}/text"
+    )
+    text = text_response.text
+    
+    # Save to file
+    safe_name = name.replace("/", "_").replace("\\", "_")
+    output_path = os.path.join(OUTPUT_DIR, f"{doc_id}_{safe_name}.txt")
+    
+    with open(output_path, "w", encoding="utf-8") as f:
+        f.write(f"Source: {source}\n")
+        f.write(f"ID: {doc_id}\n")
+        f.write(f"Name: {name}\n")
+        f.write(f"Hash: {doc['properties'].get('hash', [''])[0]}\n")
+        f.write("\n" + "="*80 + "\n\n")
+        f.write(text)
+    
+    print(f"  Saved to: {output_path}")
+
+print(f"\nExport complete! Files saved to {OUTPUT_DIR}")
+```
+
+```javascript JavaScript
+const API_BASE = "http://localhost:8080";
+const QUERY = "type:pdf AND password";
+
+// Search for documents
+const searchResponse = await fetch(
+  `${API_BASE}/search?q=${encodeURIComponent(QUERY)}`
+);
+const searchResults = await searchResponse.json();
+
+console.log(`Found ${searchResults.docs.length} documents`);
+
+// Process each document
+for (const docRef of searchResults.docs) {
+  const {source, id} = docRef;
+  
+  // Get document properties
+  const docResponse = await fetch(
+    `${API_BASE}/sources/${source}/docs/${id}`
+  );
+  const doc = await docResponse.json();
+  
+  const name = doc.properties.name[0];
+  console.log(`Processing: ${name}`);
+  
+  // Get document text
+  const textResponse = await fetch(
+    `${API_BASE}/sources/${source}/docs/${id}/text`
+  );
+  const text = await textResponse.text();
+  
+  // Download text file
+  const blob = new Blob([text], {type: 'text/plain'});
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${id}_${name}.txt`;
+  a.click();
+  window.URL.revokeObjectURL(url);
+}
+
+console.log('Export complete!');
+```
+</CodeGroup>
+
+## Integration Examples
+
+### Python Client Library
+
+Create a reusable client:
+
+```python iped_client.py
+import requests
+from typing import List, Dict, Optional
+
+class IPEDClient:
+    def __init__(self, base_url: str = "http://localhost:8080"):
+        self.base_url = base_url.rstrip("/")
+    
+    def search(self, query: str, source_id: Optional[str] = None) -> List[Dict]:
+        """Search for documents"""
+        params = {"q": query}
+        if source_id:
+            params["sourceID"] = source_id
+        
+        response = requests.get(f"{self.base_url}/search", params=params)
+        response.raise_for_status()
+        return response.json()["docs"]
+    
+    def get_document(self, source: str, doc_id: int) -> Dict:
+        """Get document properties"""
+        response = requests.get(
+            f"{self.base_url}/sources/{source}/docs/{doc_id}"
+        )
+        response.raise_for_status()
+        return response.json()
+    
+    def get_text(self, source: str, doc_id: int) -> str:
+        """Get document text"""
+        response = requests.get(
+            f"{self.base_url}/sources/{source}/docs/{doc_id}/text"
+        )
+        response.raise_for_status()
+        return response.text
+    
+    def get_content(self, source: str, doc_id: int) -> bytes:
+        """Get document binary content"""
+        response = requests.get(
+            f"{self.base_url}/sources/{source}/docs/{doc_id}/content"
+        )
+        response.raise_for_status()
+        return response.content
+    
+    def list_sources(self) -> List[Dict]:
+        """List all sources"""
+        response = requests.get(f"{self.base_url}/sources")
+        response.raise_for_status()
+        return response.json()["data"]
+    
+    def create_bookmark(self, name: str):
+        """Create a bookmark"""
+        response = requests.post(f"{self.base_url}/bookmarks/{name}")
+        response.raise_for_status()
+    
+    def add_to_bookmark(self, bookmark: str, docs: List[Dict]):
+        """Add documents to bookmark"""
+        response = requests.put(
+            f"{self.base_url}/bookmarks/{bookmark}/add",
+            json=docs
+        )
+        response.raise_for_status()
+
+# Usage
+client = IPEDClient()
+results = client.search("password")
+for doc in results:
+    text = client.get_text(doc["source"], doc["id"])
+    print(text[:100])
+```
+
+## Swagger Documentation
+
+The API includes Swagger/OpenAPI documentation accessible at:
+
+```
+http://localhost:8080/swagger-ui/
+```
+
+This provides an interactive interface to explore and test all endpoints.
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Scripting" icon="scroll" href="/advanced/scripting">
+    Extend IPED with custom scripts
+  </Card>
+  <Card title="Multicase Analysis" icon="layer-group" href="/advanced/multicases">
+    Analyze multiple cases together
+  </Card>
+</CardGroup>

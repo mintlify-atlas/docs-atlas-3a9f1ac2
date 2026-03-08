@@ -1,0 +1,539 @@
+---
+title: Scripting
+description: Extend IPED functionality with JavaScript and Python scripts
+---
+
+IPED supports extensible processing through JavaScript and Python scripts, allowing you to create custom tasks that run during evidence processing. Scripts can analyze items, set attributes, create bookmarks, and control which files are processed.
+
+## Supported Languages
+
+IPED supports two scripting languages:
+
+- **JavaScript** - Using the built-in Java scripting engine (Nashorn/GraalVM)
+- **Python** - Using Jep (Java Embedded Python) to run Python code
+
+<Note>
+On Linux, you must install Jep (`pip install jep`) and include `jep.so` in your `LD_LIBRARY_PATH` to use Python scripts.
+</Note>
+
+## Installing Scripts
+
+Scripts must be registered in `TaskInstaller.xml` to be executed during processing:
+
+```xml TaskInstaller.xml
+<tasks>
+    <!-- JavaScript task -->
+    <task script="ExampleScriptTask.js"></task>
+    
+    <!-- Python task -->
+    <task script="NSFWNudityDetectTask.py"></task>
+    
+    <!-- Java task -->
+    <task class="iped.engine.task.HashTask"></task>
+</tasks>
+```
+
+Script files should be placed in:
+- `iped-app/resources/scripts/tasks/` (built-in scripts)
+- `{case}/scripts/tasks/` (case-specific scripts)
+
+## JavaScript Script Structure
+
+### Basic Template
+
+Every JavaScript script must implement at least `getName()` and `process()` methods:
+
+```javascript ExampleScriptTask.js
+/* Returns the task name */
+function getName() {
+    return "ExampleScriptTask";
+}
+
+/* Returns optional list of configurable objects */
+function getConfigurables() {
+    return null;
+}
+
+/* Initialize task - runs once per processing thread */
+function init(configuration) {
+    // Load configuration, models, or resources
+}
+
+/* Process each item */
+function process(item) {
+    // Access item properties
+    var name = item.getName();
+    var ext = item.getExt();
+    var size = item.getLength();
+    var mime = item.getMediaType().toString();
+    
+    // Ignore DLL files
+    if (ext.equals("dll")) {
+        item.setToIgnore(true);
+    }
+    
+    // Set custom attribute
+    if (size > 10000000) {
+        item.setExtraAttribute("largeFile", "true");
+    }
+}
+
+/* Cleanup - runs after all items processed */
+function finish() {
+    // Create bookmarks, save results, etc.
+}
+```
+
+### Real Example: Ignore Files by Path
+
+This script ignores system files and folders to reduce processing time:
+
+```javascript IgnoreFilesByPathTask.js
+function getName() {
+    return "IgnoreFilesByPathTask";
+}
+
+function getConfigurables() {}
+function init(configuration) {}
+function finish() {}
+
+function process(e) {
+    var path = e.getPath().toLowerCase();
+    
+    // Ignore Windows system folders
+    if (/((\\|\/)vol_vol.|sd..|md\d(\d\d)?(p\d)?)(\\|\/)(windows|system32|program files)/i.test(path)) {
+        // Whitelist important folders
+        if (!(/programa? rfb|caixa|receita|irpf/i.test(path))) {
+            e.setToIgnore(true);
+        }
+    }
+}
+```
+
+### Real Example: Refine Categories
+
+This script adjusts file categories based on properties:
+
+```javascript RefineCategoryTask.js
+function getName() {
+    return "RefineCategoryTask";
+}
+
+function getConfigurables() {}
+function init(configuration) {}
+function finish() {}
+
+function process(e) {
+    var categorias = e.getCategories();
+    var ext = e.getExt().toLowerCase();
+    var mime = e.getMediaType().toString();
+    var path = e.getPath().toLowerCase();
+    
+    // Fix Apple iWork detection
+    if (mime.equals("application/vnd.apple.unknown.13")) {
+        if (ext.equals("pages")) {
+            e.setType("pages");
+            e.setMediaTypeStr("application/vnd.apple.pages.13");
+            e.setCategory("Text Documents");
+        } else if (ext.equals("numbers")) {
+            e.setType("numbers");
+            e.setMediaTypeStr("application/vnd.apple.numbers.13");
+            e.setCategory("Spreadsheets");
+        }
+    }
+    
+    // Categorize images by location
+    if (categorias.indexOf("Images") > -1) {
+        if (path.indexOf("chrome/user data/") > -1) {
+            e.setCategory("Temporary Internet Images");
+        } else if (path.indexOf("/windows/") > -1) {
+            e.setCategory("Images in System Folders");
+        } else {
+            e.setCategory("Other Images");
+        }
+    }
+    
+    // Add category for empty files
+    if (e.getLength() == 0) {
+        e.addCategory("Empty Files");
+    }
+}
+```
+
+## Python Script Structure
+
+### Basic Template
+
+Python scripts use a class-based structure. The class name must match the filename without `.py`:
+
+```python PythonScriptTask.py
+class PythonScriptTask:
+    
+    def isEnabled(self):
+        """Returns if this task is enabled"""
+        return True
+    
+    def getConfigurables(self):
+        """Returns optional list of configurable objects"""
+        return []
+    
+    def init(self, configuration):
+        """Initialize - runs once per processing thread"""
+        # Load models, config, etc.
+        return
+    
+    def process(self, item):
+        """Process each item"""
+        # Ignore DLL files
+        if item.getExt() is not None and ".dll" in item.getExt().lower():
+            item.setToIgnore(True)
+        
+        # Set custom attribute
+        if item.getParsedTextCache() is not None and ".com" in item.getParsedTextCache().lower():
+            item.setExtraAttribute("containsDotCom", True)
+    
+    def finish(self):
+        """Cleanup - runs after all items processed"""
+        # Create bookmarks, save results
+        query = "type:doc"
+        searcher.setQuery(query)
+        ids = searcher.search().getIds()
+        
+        bookmarkId = ipedCase.getBookmarks().newBookmark("DOC files")
+        ipedCase.getBookmarks().setBookmarkComment(bookmarkId, "Documents of DOC file format")
+        ipedCase.getBookmarks().addBookmark(ids, bookmarkId)
+        ipedCase.getBookmarks().saveState(True)
+```
+
+### Real Example: NSFW Detection
+
+This script uses Keras and TensorFlow to detect nudity in images:
+
+```python NSFWNudityDetectTask.py
+# Configuration
+useImageThumbs = True
+batchSize = 50
+maxThreads = None  # Limit GPU memory usage
+
+enableProp = 'enableYahooNSFWDetection'
+targetSize = (224, 224)
+
+class NSFWNudityDetectTask:
+    
+    def __init__(self):
+        self.itemList = []
+        self.imageList = []
+    
+    def isEnabled(self):
+        return enabled
+    
+    def getConfigurables(self):
+        from iped.engine.config import EnableTaskProperty
+        return [EnableTaskProperty(enableProp)]
+    
+    def init(self, configuration):
+        global enabled, PilImage, np
+        enabled = configuration.getEnableTaskProperty(enableProp)
+        if not enabled:
+            return
+        
+        from PIL import Image as PilImage
+        import numpy as np
+        loadModel()
+    
+    def process(self, item):
+        if not item.isQueueEnd() and not supported(item):
+            return
+        
+        # Check cache
+        if item.getHash() is not None:
+            cache = caseData.getCaseObject('nsfw_score_cache')
+            score = cache.get(item.getHash())
+            if score is not None:
+                item.setExtraAttribute('nsfw_nudity_score', score)
+                return
+        
+        # Process image or video
+        if isSupportedVideo(item):
+            processVideoFrames(item)
+        else:
+            # Load image and add to batch
+            img = loadImage(item)
+            if img is not None:
+                self.imageList.append(img)
+                self.itemList.append(item)
+        
+        # Process batch when full
+        if len(self.itemList) >= batchSize:
+            processImages(self.imageList, self.itemList)
+            self.itemList.clear()
+            self.imageList.clear()
+```
+
+## Item API Reference
+
+### Getters
+
+<CodeGroup>
+```javascript JavaScript
+var name = item.getName();           // File name
+var ext = item.getExt();             // Extension
+var type = item.getType();           // File type
+var path = item.getPath();           // Full path
+var hash = item.getHash();           // Hash value
+var mime = item.getMediaType().toString();
+var categories = item.getCategories(); // Separated by |
+var size = item.getLength();         // File size in bytes
+
+var modDate = item.getModDate();     // May be null
+var createDate = item.getCreationDate();
+var accessDate = item.getAccessDate();
+
+var isDeleted = item.isDeleted();
+var isDir = item.isDir();
+var isCarved = item.isCarved();
+var hasKids = item.hasChildren();
+
+var metadata = item.getMetadata();
+var text = item.getParsedTextCache();
+var tempFile = item.getTempFile();
+var stream = item.getBufferedInputStream();
+var attr = item.getExtraAttribute("key");
+```
+
+```python Python
+name = item.getName()
+ext = item.getExt()
+type = item.getType()
+path = item.getPath()
+hash = item.getHash()
+mime = item.getMediaType().toString()
+categories = item.getCategories()
+size = item.getLength()
+
+modDate = item.getModDate()
+createDate = item.getCreationDate()
+accessDate = item.getAccessDate()
+
+isDeleted = item.isDeleted()
+isDir = item.isDir()
+isCarved = item.isCarved()
+hasKids = item.hasChildren()
+
+metadata = item.getMetadata()
+text = item.getParsedTextCache()
+tempFile = item.getTempFile()
+stream = item.getBufferedInputStream()
+attr = item.getExtraAttribute("key")
+```
+</CodeGroup>
+
+### Setters
+
+<CodeGroup>
+```javascript JavaScript
+// Ignore item (exclude from processing and case)
+item.setToIgnore(true);
+
+// Include/exclude from case after processing
+item.setAddToCase(false);
+
+// Modify categories
+item.addCategory("Suspicious");
+item.removeCategory("Documents");
+item.setCategory("Malware");  // Replaces all
+
+// Set media type
+item.setMediaTypeStr("application/x-custom");
+
+// Set custom attributes (creates new columns)
+item.setExtraAttribute("score", 95.5);
+item.setExtraAttribute("flagged", "true");
+
+// Override extracted text
+item.setParsedTextCache("Custom text");
+```
+
+```python Python
+# Ignore item (exclude from processing and case)
+item.setToIgnore(True)
+
+# Include/exclude from case after processing
+item.setAddToCase(False)
+
+# Modify categories
+item.addCategory("Suspicious")
+item.removeCategory("Documents")
+item.setCategory("Malware")  # Replaces all
+
+# Set media type
+item.setMediaTypeStr("application/x-custom")
+
+# Set custom attributes (creates new columns)
+item.setExtraAttribute("score", 95.5)
+item.setExtraAttribute("flagged", True)
+
+# Override extracted text
+item.setParsedTextCache("Custom text")
+```
+</CodeGroup>
+
+## Creating Bookmarks
+
+You can create bookmarks in the `finish()` method using the `ipedCase` and `searcher` objects:
+
+<CodeGroup>
+```javascript JavaScript
+function finish() {
+    // Define search query
+    var query = "type:pdf";
+    
+    // Search for items
+    searcher.setQuery(query);
+    var ids = searcher.search().getIds();
+    
+    // Create bookmark
+    var bookmarkId = ipedCase.getBookmarks().newBookmark("PDF files");
+    
+    // Set description
+    ipedCase.getBookmarks().setBookmarkComment(bookmarkId, 
+        "Documents of PDF file format");
+    
+    // Add items to bookmark
+    ipedCase.getBookmarks().addBookmark(ids, bookmarkId);
+    
+    // Save changes synchronously
+    ipedCase.getBookmarks().saveState(true);
+}
+```
+
+```python Python
+def finish(self):
+    # Define search query
+    query = "type:pdf"
+    
+    # Search for items
+    searcher.setQuery(query)
+    ids = searcher.search().getIds()
+    
+    # Create bookmark
+    bookmarkId = ipedCase.getBookmarks().newBookmark("PDF files")
+    
+    # Set description
+    ipedCase.getBookmarks().setBookmarkComment(bookmarkId,
+        "Documents of PDF file format")
+    
+    # Add items to bookmark
+    ipedCase.getBookmarks().addBookmark(ids, bookmarkId)
+    
+    # Save changes synchronously
+    ipedCase.getBookmarks().saveState(True)
+```
+</CodeGroup>
+
+## Shared Objects
+
+Scripts can share data between threads using the `caseData` object:
+
+```python
+# Store shared object (thread-safe)
+model = loadMyModel()
+caseData.putCaseObject('my_model', model)
+
+# Retrieve shared object
+model = caseData.getCaseObject('my_model')
+if model is None:
+    model = loadMyModel()
+    caseData.putCaseObject('my_model', model)
+```
+
+## Performance Tips
+
+<Steps>
+
+<Step title="Batch Processing">
+Process multiple items together for ML models:
+
+```python
+def process(self, item):
+    self.batch.append(item)
+    if len(self.batch) >= 50:
+        processBatch(self.batch)
+        self.batch.clear()
+```
+</Step>
+
+<Step title="Cache Results">
+Use hash-based caching to avoid reprocessing:
+
+```python
+cache = caseData.getCaseObject('result_cache')
+if cache is None:
+    from java.util.concurrent import ConcurrentHashMap
+    cache = ConcurrentHashMap()
+    caseData.putCaseObject('result_cache', cache)
+
+result = cache.get(item.getHash())
+if result is None:
+    result = expensiveOperation(item)
+    cache.put(item.getHash(), result)
+```
+</Step>
+
+<Step title="Avoid Full Text Search">
+Searching text in all items is very slow:
+
+```javascript
+// SLOW - avoid this!
+if (item.getParsedTextCache().indexOf("keyword") != -1) {
+    // ...
+}
+
+// BETTER - use regex validation on regex matches
+// or filter by file type first
+if (item.getMediaType().toString().startsWith("text/")) {
+    // Now safe to search text
+}
+```
+</Step>
+
+</Steps>
+
+## Debugging
+
+### Logging
+
+Use the `logger` object for debugging:
+
+```python
+logger.info('Processing started')
+logger.debug('Item: ' + item.getPath())
+logger.warn('Suspicious file detected')
+logger.error('Processing failed: ' + str(e))
+```
+
+### Access Thread Info
+
+```python
+# Get thread information
+worker_name = worker.getName()
+num_threads = numThreads
+
+# Track per-thread statistics
+thread_count = caseData.getCaseObject('thread_count')
+if thread_count is None:
+    thread_count = 0
+thread_count += 1
+caseData.putCaseObject('thread_count', thread_count)
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Custom Tasks" icon="code" href="/advanced/custom-tasks">
+    Create Java-based processing tasks
+  </Card>
+  <Card title="Web API" icon="cloud" href="/advanced/web-api">
+    Access cases remotely via REST API
+  </Card>
+</CardGroup>

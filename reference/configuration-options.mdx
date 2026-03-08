@@ -1,0 +1,166 @@
+---
+title: Configuration Options
+description: Complete reference for IPEDConfig.txt configuration file options
+icon: sliders
+---
+
+## Processing Settings
+
+IPED's main configuration file is `IPEDConfig.txt`, located in the `iped-app/resources/config/` directory. This file controls all processing features and settings.
+
+### Hash Calculation
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `enableHash` | boolean | `true` | Enables file hashes calculation (MD5, SHA-1, SHA-256, SHA-512, eDonkey) |
+| `enablePhotoDNA` | boolean | `false` | Enables PhotoDNA hash calculation (law enforcement only) |
+| `enableHashDBLookup` | boolean | `false` | Enables hash lookup on IPED database |
+| `enablePhotoDNALookup` | boolean | `false` | Enables PhotoDNA lookup on IPED hash database |
+
+### Content Detection and Analysis
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `enableLedDie` | boolean | `false` | Enables nudity detection with scoring (1-1000) and classification (1-5) |
+| `enableYahooNSFWDetection` | boolean | `false` | Enables Yahoo OpenNSFW deep learning algorithm for nudity detection |
+| `enableCSAMDetector` | boolean | `false` | Detects Child Sexual Abuse Material using TensorFlow, PyTorch or ONNX AI model |
+| `enableQRCode` | boolean | `false` | Enables QR code detection and decoding |
+| `enableLanguageDetect` | boolean | `true` | Detects more than 70 languages in document files |
+| `enableNamedEntityRecogniton` | boolean | `false` | Recognizes named entities: people, organizations, places (requires Stanford CoreNLP) |
+| `enableFaceRecognition` | boolean | `false` | Enables face recognition feature (requires Python dependencies) |
+| `enableAgeEstimation` | boolean | `false` | Enables age estimation feature (requires Python dependencies) |
+
+### File Processing
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `processFileSignatures` | boolean | `true` | Processes file signatures |
+| `enableFileParsing` | boolean | `true` | Enables parsing of file contents (required for many features) |
+| `expandContainers` | boolean | `true` | Expands containers like compressed files, emails, and Office documents |
+| `processEmbeddedDisks` | boolean | `true` | Processes disk images (DD, E01, VHD, VMDK) recursively |
+| `ignoreDuplicates` | boolean | `false` | Ignores duplicated files with same hash (WARNING: potentially dangerous) |
+| `exportFileProps` | boolean | `true` | Exports file properties to "Lista de Arquivos.csv" |
+
+### Search and Indexing
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `enableRegexSearch` | boolean | `true` | Searches texts for social numbers, emails, URLs, credit cards, crypto addresses, etc. |
+| `indexFileContents` | boolean | `true` | Indexes file contents; if disabled, only file properties are indexed |
+| `entropyTest` | boolean | `true` | Tests for randomness to detect encrypted items |
+| `enableIndexToElasticSearch` | boolean | `false` | Enables indexing to ElasticSearch/OpenSearch cluster |
+| `enableGraphGeneration` | boolean | `true` | Creates link graphs of communications (calls, messages, emails) |
+
+### OCR and Transcription
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `enableOCR` | boolean | `false` | Enables OCR on images and scanned PDFs (increases processing time significantly) |
+| `enableAudioTranscription` | boolean | `false` | Enables audio transcription (VOSK, Wav2Vec2, Whisper, Azure, Google Cloud) |
+
+### Carving
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `enableCarving` | boolean | `false` | Enables carving (requires `addUnallocated` enabled) |
+| `enableLedCarving` | boolean | `false` | Retrieves known files from LED base using file beginning (requires `addUnallocated`) |
+| `enableKnownMetCarving` | boolean | `false` | Carves eMule "known.met" files (requires `addUnallocated`) |
+
+### Thumbnails and Media Processing
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `enableImageThumbs` | boolean | `true` | Generates image thumbnails during processing |
+| `enableImageSimilarity` | boolean | `false` | Enables search for visually similar images (requires `enableImageThumbs`) |
+| `enableVideoThumbs` | boolean | `true` | Extracts image frames from video files |
+| `enableDocThumbs` | boolean | `false` | Creates thumbnails for PDFs and LibreOffice formats (experimental) |
+
+### Export and Storage
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `enableAutomaticExportFiles` | boolean | `false` | Enables automatic file export based on categories or keywords |
+| `enableMinIO` | boolean | `false` | Enables exporting files to MinIO object storage cluster |
+| `enableHTMLReport` | boolean | `true` | Enables HTML report generation |
+
+### Special Features
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `enableSearchHardwareWallets` | boolean | `true` | Enables searching for crypto hardware wallets |
+| `enableRemoteImageClassifier` | boolean | `false` | Performs classification of image and video files using remote service |
+
+## Configuration File Locations
+
+IPED uses a hierarchical configuration system:
+
+<Accordion title="Configuration File Hierarchy">
+  <AccordionItem title="Main Configuration">
+    - **Location**: `iped-app/resources/config/IPEDConfig.txt`
+    - Contains the primary processing settings
+    - Settings here apply to all processing profiles unless overridden
+  </AccordionItem>
+  
+  <AccordionItem title="Profile-Specific Configuration">
+    - **Forensic Profile**: `config/profiles/forensic/IPEDConfig.txt`
+    - **CSAM Profile**: `config/profiles/pedo/IPEDConfig.txt`
+    - **Triage Profile**: `config/profiles/triage/IPEDConfig.txt`
+    - **Fast Mode**: `config/profiles/fastmode/IPEDConfig.txt`
+    - **Blind Profile**: `config/profiles/blind/IPEDConfig.txt`
+    
+    Profile-specific settings override main configuration settings.
+  </AccordionItem>
+  
+  <AccordionItem title="Local Configuration">
+    - **Location**: `LocalConfig.txt`
+    - Contains environment-specific settings (locale, temp directories, thread count)
+    - Not version-controlled, specific to each machine
+  </AccordionItem>
+</Accordion>
+
+## Advanced Configuration Files
+
+Each processing task may have its own configuration file in the `conf/` directory:
+
+- `AudioTranscriptConfig.txt` - Audio transcription settings
+- `OCRConfig.txt` - OCR language and quality settings
+- `CSAMDetectorConfig.txt` - CSAM detection model configuration
+- `FaceRecognitionConfig.txt` - Face recognition parameters
+- `AgeEstimationConfig.txt` - Age estimation settings
+- `VideoThumbsConfig.txt` - Video frame extraction settings
+- `RegexConfig.txt` - Regular expression patterns
+- `CarverConfig.xml` - File carving configuration
+- `HashTaskConfig.txt` - Hash algorithm selection
+- `MinIOConfig.txt` - MinIO object storage settings
+- `ElasticSearchConfig.txt` - ElasticSearch/OpenSearch settings
+
+## Performance Tuning
+
+<Note>
+Key performance settings are found in `LocalConfig.txt`:
+
+- **numThreads**: Set to "default" or specify number of processing threads
+- **indexTempOnSSD**: Enable if temp directory is on SSD (can improve speed up to 2x)
+- **outputOnSSD**: Enable if output folder is on SSD
+- **indexTemp**: Location of temporary processing directory
+</Note>
+
+## Best Practices
+
+<Warning>
+**Critical Configuration Warnings**:
+
+1. **ignoreDuplicates**: Setting this to `true` is dangerous as it may exclude duplicated files with different metadata (names, paths, dates)
+
+2. **enableCSAMDetector/enablePhotoDNA**: These features require proper legal authorization and proprietary models
+
+3. **enableOCR/enableAudioTranscription**: These significantly increase processing time and resource usage
+
+4. **Temp Directory**: Configure on a folder free of antivirus scanning and system indexing, preferably on SSD
+</Warning>
+
+## Related Resources
+
+- [Processing Tasks](/reference/processing-tasks) - Learn about individual processing modules
+- [Supported Formats](/reference/supported-formats) - View all supported file formats
+- [Troubleshooting](/reference/troubleshooting) - Common issues and solutions

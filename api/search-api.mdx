@@ -1,0 +1,507 @@
+---
+title: Search API
+description: Query and filter evidence using Lucene-based search with IPEDSearcher
+---
+
+The Search API enables powerful querying of evidence items using Lucene's query syntax with IPED-specific enhancements.
+
+## IPEDSearcher Class
+
+**Package**: `iped.engine.search`  
+**Source**: `iped-engine/src/main/java/iped/engine/search/IPEDSearcher.java`
+
+The `IPEDSearcher` class is the primary interface for searching IPED cases.
+
+### Creating a Searcher
+
+<ParamField path="IPEDSearcher(IPEDSource ipedCase)" type="constructor">
+  Creates a searcher for the specified case without a predefined query
+</ParamField>
+
+<ParamField path="IPEDSearcher(IPEDSource ipedCase, String query)" type="constructor">
+  Creates a searcher with a query string. The query is parsed using IPED's query syntax.
+</ParamField>
+
+<ParamField path="IPEDSearcher(IPEDSource ipedCase, Query query)" type="constructor">
+  Creates a searcher with a Lucene Query object
+</ParamField>
+
+### Basic Search Example
+
+```java
+import iped.engine.data.IPEDSource;
+import iped.engine.search.IPEDSearcher;
+import iped.search.SearchResult;
+import iped.data.IItem;
+
+File caseDir = new File("/path/to/case");
+IPEDSource source = new IPEDSource(caseDir);
+
+// Create searcher with query
+IPEDSearcher searcher = new IPEDSearcher(source, "type:pdf");
+
+// Execute search
+SearchResult result = searcher.search();
+
+System.out.println("Found " + result.getLength() + " items");
+
+// Iterate results
+for (int id : result.getIds()) {
+    IItem item = source.getItemByID(id);
+    System.out.println(item.getName());
+}
+
+source.close();
+```
+
+## Query Methods
+
+<ParamField path="setQuery(String queryText)" type="void">
+  Sets the query from a text string. Throws `RuntimeException` wrapping `ParseException` or `QueryNodeException` if the query syntax is invalid.
+</ParamField>
+
+<ParamField path="setQuery(Query query)" type="void">
+  Sets a Lucene Query object directly
+</ParamField>
+
+<ParamField path="getQuery()" type="Query">
+  Returns the current Lucene Query object
+</ParamField>
+
+### Query Configuration
+
+<ParamField path="setTreeQuery(boolean treeQuery)" type="void">
+  If false (default), excludes tree nodes from results. Tree nodes are internal structural items.
+</ParamField>
+
+<ParamField path="setNoScoring(boolean noScore)" type="void">
+  If true, disables relevance scoring for faster performance. Automatically enabled for result sets larger than 1 million items.
+</ParamField>
+
+<ParamField path="setRewritequery(boolean rewriteQuery)" type="void">
+  If true (default), rewrites queries for optimization
+</ParamField>
+
+### Example: Advanced Configuration
+
+```java
+IPEDSearcher searcher = new IPEDSearcher(source);
+
+// Configure search behavior
+searcher.setQuery("content:confidential");
+searcher.setNoScoring(true);  // Faster for large result sets
+searcher.setTreeQuery(false); // Exclude tree nodes
+
+SearchResult result = searcher.search();
+```
+
+## Executing Searches
+
+<ParamField path="search()" type="SearchResult">
+  Executes the search on a single IPEDSource and returns results. Throws `IOException` on index access errors.
+</ParamField>
+
+<ParamField path="multiSearch()" type="MultiSearchResult">
+  Executes the search on an IPEDMultiSource (multiple cases) and returns combined results. Throws `IOException` on index access errors.
+</ParamField>
+
+<ParamField path="cancel()" type="void">
+  Cancels an ongoing search operation
+</ParamField>
+
+### Multi-Case Search Example
+
+```java
+import iped.engine.data.IPEDMultiSource;
+import iped.data.IItemId;
+import iped.search.IMultiSearchResult;
+
+// Create multi-source from multiple cases
+List<IIPEDSource> sources = new ArrayList<>();
+sources.add(new IPEDSource(new File("/case1")));
+sources.add(new IPEDSource(new File("/case2")));
+
+IPEDMultiSource multiSource = new IPEDMultiSource(sources);
+
+// Search across all cases
+IPEDSearcher searcher = new IPEDSearcher(multiSource, "bitcoin");
+IMultiSearchResult result = searcher.multiSearch();
+
+System.out.println("Found " + result.getLength() + " items across cases");
+
+// Iterate with source information
+for (IItemId itemId : result.getIterator()) {
+    int sourceId = itemId.getSourceId();
+    int id = itemId.getId();
+    IItem item = multiSource.getAtomicSourceBySourceId(sourceId).getItemByID(id);
+    System.out.println("Source " + sourceId + ": " + item.getName());
+}
+```
+
+## SearchResult Interface
+
+**Package**: `iped.search`
+
+### Result Methods
+
+<ParamField path="getLength()" type="int">
+  Returns the number of items in the search result
+</ParamField>
+
+<ParamField path="getIds()" type="int[]">
+  Returns an array of item IDs in the result set
+</ParamField>
+
+<ParamField path="getItem(int index)" type="IItemId">
+  Returns the IItemId at the specified index in the result list
+</ParamField>
+
+<ParamField path="getIterator()" type="Iterator<IItemId>">
+  Returns an iterator over the result set
+</ParamField>
+
+### Example: Processing Results
+
+```java
+SearchResult result = searcher.search();
+
+// Get result count
+int count = result.getLength();
+System.out.println("Total results: " + count);
+
+// Get all IDs at once
+int[] ids = result.getIds();
+for (int id : ids) {
+    processItem(source.getItemByID(id));
+}
+
+// Or iterate
+for (IItemId itemId : result.getIterator()) {
+    IItem item = source.getItemByID(itemId.getId());
+    processItem(item);
+}
+```
+
+## Query Syntax
+
+IPED uses Lucene query syntax with field-specific searches.
+
+### Basic Syntax
+
+| Query | Description |
+|-------|-------------|
+| `password` | Search for term in content |
+| `name:report.pdf` | Search in specific field |
+| `"exact phrase"` | Phrase search |
+| `pass*` | Wildcard search |
+| `password AND secret` | Boolean AND |
+| `pdf OR doc` | Boolean OR |
+| `password NOT public` | Boolean NOT |
+| `pass?ord` | Single character wildcard |
+
+### Field Names
+
+Common indexed fields:
+
+<ParamField path="name" type="String">
+  Filename
+</ParamField>
+
+<ParamField path="path" type="String">
+  Full file path
+</ParamField>
+
+<ParamField path="type" type="String">
+  Detected file type extension
+</ParamField>
+
+<ParamField path="ext" type="String">
+  Original file extension
+</ParamField>
+
+<ParamField path="category" type="String">
+  Item category (images, videos, documents, etc.)
+</ParamField>
+
+<ParamField path="content" type="String">
+  Extracted text content (default field if no field specified)
+</ParamField>
+
+<ParamField path="length" type="Long">
+  File size in bytes
+</ParamField>
+
+<ParamField path="hash" type="String">
+  Hash value (MD5, SHA-1, SHA-256, etc.)
+</ParamField>
+
+<ParamField path="deleted" type="Boolean">
+  Whether file is deleted
+</ParamField>
+
+<ParamField path="carved" type="Boolean">
+  Whether file was recovered by carving
+</ParamField>
+
+### Query Examples
+
+```java
+// Search by file type
+IPEDSearcher searcher = new IPEDSearcher(source, "type:pdf");
+
+// Search by category
+searcher.setQuery("category:images");
+
+// Complex boolean query
+searcher.setQuery("(type:pdf OR type:doc) AND content:confidential");
+
+// Find deleted files
+searcher.setQuery("deleted:true");
+
+// Find large files (> 100MB)
+searcher.setQuery("length:[104857600 TO *]");
+
+// Find files by hash
+searcher.setQuery("hash:d41d8cd98f00b204e9800998ecf8427e");
+
+// Wildcard filename search
+searcher.setQuery("name:*.exe");
+
+// Phrase search in content
+searcher.setQuery("content:\"social security number\"");
+
+// Date range (if indexed)
+searcher.setQuery("modificationDate:[2023-01-01 TO 2023-12-31]");
+
+// Find carved images
+searcher.setQuery("carved:true AND category:images");
+```
+
+### Range Queries
+
+```java
+// Numeric range
+searcher.setQuery("length:[1000 TO 5000]");
+
+// Open-ended range
+searcher.setQuery("length:[10485760 TO *]"); // Files >= 10MB
+
+// Date range
+searcher.setQuery("modificationDate:[2023-01-01 TO 2023-12-31]");
+```
+
+### Wildcards and Regex
+
+```java
+// Wildcard
+searcher.setQuery("name:report*.pdf");
+
+// Single character wildcard
+searcher.setQuery("name:file?.txt");
+
+// Regular expression (use /regex/)
+searcher.setQuery("name:/report[0-9]{4}\\.pdf/");
+```
+
+### Boosting
+
+```java
+// Boost terms for relevance
+searcher.setQuery("password^2 secret"); // "password" is more important
+```
+
+### Proximity Search
+
+```java
+// Words within 10 words of each other
+searcher.setQuery("\"social security\"~10");
+```
+
+## Advanced Search Patterns
+
+### Finding Suspicious Files
+
+```java
+public List<IItem> findSuspiciousFiles(IPEDSource source) throws Exception {
+    // Encrypted executables
+    String query = "type:exe AND (content:encrypted OR category:encrypted)";
+    
+    IPEDSearcher searcher = new IPEDSearcher(source, query);
+    searcher.setNoScoring(true);
+    SearchResult result = searcher.search();
+    
+    List<IItem> items = new ArrayList<>();
+    for (int id : result.getIds()) {
+        items.add(source.getItemByID(id));
+    }
+    return items;
+}
+```
+
+### Filtering by Multiple Criteria
+
+```java
+public SearchResult findDocumentsWithKeywords(IPEDSource source) throws Exception {
+    // Documents containing specific keywords
+    String query = "(type:pdf OR type:doc OR type:docx) AND " +
+                   "(content:confidential OR content:\"trade secret\" OR content:proprietary)";
+    
+    IPEDSearcher searcher = new IPEDSearcher(source, query);
+    return searcher.search();
+}
+```
+
+### Excluding Items
+
+```java
+// Find all images except JPEGs
+String query = "category:images NOT type:jpeg";
+
+// Find non-deleted files
+String query = "deleted:false";
+
+// Find files not in system folders
+String query = "NOT path:*Windows\\\\System32*";
+```
+
+## Performance Optimization
+
+### Large Result Sets
+
+<Warning>
+  When search returns more than 1 million items (`MAX_SIZE_TO_SCORE = 1000000`), scoring is automatically disabled to improve performance.
+</Warning>
+
+```java
+IPEDSearcher searcher = new IPEDSearcher(source, "*");
+searcher.setNoScoring(true); // Manually disable scoring for faster results
+SearchResult result = searcher.search();
+```
+
+### Sorted Results
+
+Use constructor with sort parameters:
+
+```java
+// Sort by field
+IPEDSearcher searcher = new IPEDSearcher(
+    source, 
+    "category:documents", 
+    "modificationDate" // Sort field
+);
+
+SearchResult result = searcher.search();
+```
+
+### Caching Searches
+
+```java
+// Reuse searcher for multiple executions
+IPEDSearcher searcher = new IPEDSearcher(source);
+
+searcher.setQuery("type:pdf");
+SearchResult pdfs = searcher.search();
+
+searcher.setQuery("type:doc");
+SearchResult docs = searcher.search();
+```
+
+## QueryBuilder Class
+
+**Package**: `iped.engine.search`  
+**Source**: `iped-engine/src/main/java/iped/engine/search/QueryBuilder.java`
+
+The `QueryBuilder` class provides programmatic query construction.
+
+### Creating Queries
+
+<ParamField path="QueryBuilder(IIPEDSource ipedCase)" type="constructor">
+  Creates a query builder for the specified case
+</ParamField>
+
+<ParamField path="getQuery(String queryText)" type="Query">
+  Parses a query string and returns a Lucene Query object
+</ParamField>
+
+### Programmatic Query Building
+
+```java
+import iped.engine.search.QueryBuilder;
+import org.apache.lucene.search.Query;
+import org.apache.lucene.search.BooleanQuery;
+import org.apache.lucene.search.BooleanClause.Occur;
+
+QueryBuilder builder = new QueryBuilder(source);
+
+// Parse query string
+Query q1 = builder.getQuery("type:pdf");
+
+// Build query programmatically
+BooleanQuery.Builder boolQuery = new BooleanQuery.Builder();
+boolQuery.add(builder.getQuery("category:documents"), Occur.MUST);
+boolQuery.add(builder.getQuery("deleted:true"), Occur.MUST);
+Query complexQuery = boolQuery.build();
+
+IPEDSearcher searcher = new IPEDSearcher(source, complexQuery);
+SearchResult result = searcher.search();
+```
+
+### Escaping Special Characters
+
+```java
+import iped.engine.search.QueryBuilder;
+
+// Escape special characters in user input
+String userInput = "file[1].txt";
+String escaped = QueryBuilder.escape(userInput);
+
+String query = "name:" + escaped;
+IPEDSearcher searcher = new IPEDSearcher(source, query);
+```
+
+## Error Handling
+
+```java
+import iped.exception.ParseException;
+import iped.exception.QueryNodeException;
+import java.io.IOException;
+
+try {
+    IPEDSearcher searcher = new IPEDSearcher(source, "type:pdf");
+    SearchResult result = searcher.search();
+    
+    for (int id : result.getIds()) {
+        IItem item = source.getItemByID(id);
+        processItem(item);
+    }
+    
+} catch (ParseException | QueryNodeException e) {
+    System.err.println("Invalid query syntax: " + e.getMessage());
+} catch (IOException e) {
+    System.err.println("Index access error: " + e.getMessage());
+}
+```
+
+## Best Practices
+
+<Tip>
+  **Use Specific Fields**: Query specific fields (e.g., `name:report.pdf`) instead of full-text searches when possible for better performance.
+</Tip>
+
+<Tip>
+  **Disable Scoring**: Use `setNoScoring(true)` when you only need to filter items and don't need relevance ranking.
+</Tip>
+
+<Warning>
+  **Wildcard Performance**: Leading wildcards (e.g., `*word`) are expensive. Avoid them when possible or use them with other constraints.
+</Warning>
+
+<Tip>
+  **Escape User Input**: Always escape special characters in user-provided query strings using `QueryBuilder.escape()`.
+</Tip>
+
+## See Also
+
+- [Item API](/api/item-api) - Access item properties and content
+- [Web API Search](/api/web/endpoints#search) - REST API search endpoint
+- [Task API](/api/task-api) - Use searches in custom tasks

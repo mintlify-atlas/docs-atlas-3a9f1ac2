@@ -1,0 +1,204 @@
+---
+title: API Overview
+description: Comprehensive guide to IPED's programmatic APIs for digital forensics automation
+---
+
+IPED provides two main APIs for programmatic access to digital forensics capabilities:
+
+- **Core Java API**: Direct access to IPED's processing engine and data structures
+- **Web API**: RESTful HTTP endpoints for remote case access and search
+
+## Core Java API
+
+The Core Java API enables developers to build custom forensic tools and automated workflows using IPED's processing capabilities.
+
+### Key Components
+
+<CardGroup cols={2}>
+  <Card title="Item API" icon="file" href="/api/item-api">
+    Access and manipulate evidence items with IItemReader and IItem interfaces
+  </Card>
+  
+  <Card title="Search API" icon="magnifying-glass" href="/api/search-api">
+    Query and filter evidence using Lucene-based search with IPEDSearcher
+  </Card>
+  
+  <Card title="Task API" icon="list-check" href="/api/task-api">
+    Extend IPED with custom processing tasks using AbstractTask
+  </Card>
+  
+  <Card title="Web API" icon="globe" href="/api/web/endpoints">
+    REST endpoints for remote case access and automation
+  </Card>
+</CardGroup>
+
+## Getting Started
+
+### Maven Dependencies
+
+Add IPED dependencies to your `pom.xml`:
+
+```xml
+<dependency>
+    <groupId>io.github.sepinf-inc</groupId>
+    <artifactId>iped-api</artifactId>
+    <version>4.1.0</version>
+</dependency>
+
+<dependency>
+    <groupId>io.github.sepinf-inc</groupId>
+    <artifactId>iped-engine</artifactId>
+    <version>4.1.0</version>
+</dependency>
+```
+
+### Quick Example
+
+Access an IPED case and search for items:
+
+```java
+import iped.engine.data.IPEDSource;
+import iped.engine.search.IPEDSearcher;
+import iped.data.IItem;
+import iped.search.SearchResult;
+
+public class IPEDExample {
+    public static void main(String[] args) throws Exception {
+        // Open case
+        File caseDir = new File("/path/to/case");
+        IPEDSource source = new IPEDSource(caseDir);
+        
+        // Search for documents
+        IPEDSearcher searcher = new IPEDSearcher(source, "type:pdf");
+        SearchResult result = searcher.search();
+        
+        // Process results
+        for (int id : result.getIds()) {
+            IItem item = source.getItemByID(id);
+            System.out.println(item.getName() + ": " + item.getLength());
+        }
+        
+        source.close();
+    }
+}
+```
+
+## Architecture
+
+### Data Flow
+
+```mermaid
+graph LR
+    A[Evidence Source] --> B[IPEDSource]
+    B --> C[IndexSearcher]
+    C --> D[IPEDSearcher]
+    D --> E[SearchResult]
+    E --> F[IItem]
+    F --> G[Content/Metadata]
+```
+
+### Core Interfaces
+
+| Interface | Purpose | Package |
+|-----------|---------|----------|
+| `IIPEDSource` | Case/index access | `iped.data` |
+| `IItemReader` | Read-only item access | `iped.data` |
+| `IItem` | Full item manipulation | `iped.data` |
+| `IIPEDSearcher` | Search interface | `iped.search` |
+| `AbstractTask` | Custom processing | `iped.engine.task` |
+
+## Use Cases
+
+### Automated Analysis
+
+Build custom analysis workflows:
+
+```java
+// Find and export all images
+IPEDSearcher searcher = new IPEDSearcher(source, "category:images");
+SearchResult result = searcher.search();
+
+for (int id : result.getIds()) {
+    IItem item = source.getItemByID(id);
+    Files.copy(
+        item.getBufferedInputStream(), 
+        Paths.get("/export/" + item.getName())
+    );
+}
+```
+
+### Custom Processing Tasks
+
+Extend IPED's processing pipeline:
+
+```java
+public class CustomHashTask extends AbstractTask {
+    @Override
+    protected void process(IItem item) throws Exception {
+        byte[] content = IOUtils.toByteArray(item.getBufferedInputStream());
+        String hash = computeCustomHash(content);
+        item.setExtraAttribute("customHash", hash);
+    }
+}
+```
+
+### Remote Access
+
+Query cases via REST API:
+
+```bash
+# Search for items
+curl "http://localhost:8080/search?q=pdf"
+
+# Get item metadata
+curl "http://localhost:8080/sources/case1/docs/12345"
+
+# Download content
+curl "http://localhost:8080/sources/case1/docs/12345/content" -o file.pdf
+```
+
+## Performance Considerations
+
+<Warning>
+  **Large Result Sets**: When searching returns more than 1 million items, scoring is automatically disabled. Use `setNoScoring(true)` for better performance on large searches.
+</Warning>
+
+<Tip>
+  **Streaming Content**: Always use `getBufferedInputStream()` or `getSeekableInputStream()` instead of `getTempFile()` to avoid spooling large files to disk.
+</Tip>
+
+## Thread Safety
+
+IPEDSource and IPEDSearcher are thread-safe for read operations. For processing tasks, each worker thread maintains its own task instances.
+
+## Error Handling
+
+```java
+try {
+    SearchResult result = searcher.search();
+} catch (ParseException e) {
+    // Invalid query syntax
+} catch (IOException e) {
+    // Index access error
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Item API Reference" icon="book" href="/api/item-api">
+    Learn about accessing item properties and content
+  </Card>
+  
+  <Card title="Search API Reference" icon="book" href="/api/search-api">
+    Master query syntax and search operations
+  </Card>
+  
+  <Card title="Web API Reference" icon="book" href="/api/web/endpoints">
+    Explore REST endpoints for remote access
+  </Card>
+  
+  <Card title="Task Development" icon="book" href="/api/task-api">
+    Create custom processing modules
+  </Card>
+</CardGroup>

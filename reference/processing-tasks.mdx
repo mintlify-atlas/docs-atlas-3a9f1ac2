@@ -1,0 +1,839 @@
+---
+title: Processing Tasks
+description: Complete reference of all 49+ processing tasks and modules in IPED
+icon: list-check
+---
+
+## Core Processing Tasks
+
+IPED processes evidence through a series of modular tasks. Each task can be configured independently through configuration files.
+
+## File Analysis Tasks
+
+### HashTask
+
+**Purpose**: Calculates cryptographic hashes for files
+
+**Configuration**: `conf/HashTaskConfig.txt`, `IPEDConfig.txt` (enableHash)
+
+**Supported Algorithms**:
+- MD5
+- SHA-1
+- SHA-256
+- SHA-512
+- eDonkey/eMule
+- PhotoDNA (law enforcement only)
+
+**Use Cases**:
+- Duplicate detection
+- Known file filtering (NSRL)
+- Evidence integrity verification
+- Hash database lookups
+
+---
+
+### SignatureTask
+
+**Purpose**: Analyzes file signatures using Apache Tika to identify file types
+
+**Configuration**: `IPEDConfig.txt` (processFileSignatures)
+
+**Capabilities**:
+- Content-based file type detection
+- Identifies files with incorrect or missing extensions
+- Detects file type mismatches
+- Supports custom signature definitions
+
+**Output**: Sets accurate MIME types for all items
+
+---
+
+### HashDBLookupTask
+
+**Purpose**: Looks up file hashes against known hash databases
+
+**Configuration**: `conf/HashDBLookupConfig.txt`, `IPEDConfig.txt` (enableHashDBLookup)
+
+**Supported Databases**:
+- NIST NSRL (National Software Reference Library)
+- NIST CAID (Child Abuse Image Database)
+- ProjectVIC hash sets
+- Interpol ICSE CSAM database
+- LED (Brazilian Federal Police database)
+- Standard CSV format hash sets
+
+**Features**:
+- Fast hash deduplication
+- Multi-set lookup
+- Known/notable/contraband flagging
+
+---
+
+### PhotoDNATask
+
+**Purpose**: Calculates PhotoDNA perceptual hashes
+
+**Configuration**: `conf/PhotoDNAConfig.txt`, `IPEDConfig.txt` (enablePhotoDNA)
+
+**Restrictions**: Law enforcement only - requires licensed PhotoDNA library
+
+**Capabilities**:
+- Works on images and videos
+- Generates robust perceptual hashes
+- Resistant to image modifications
+
+---
+
+### PhotoDNALookup
+
+**Purpose**: Looks up PhotoDNA hashes against CSAM databases
+
+**Configuration**: `conf/PhotoDNALookupConfig.txt`, `IPEDConfig.txt` (enablePhotoDNALookup)
+
+**Requirements**: Law enforcement authorization and PhotoDNA library
+
+---
+
+## Parsing and Content Extraction
+
+### ParsingTask
+
+**Purpose**: Extracts text content and metadata from files
+
+**Configuration**: `conf/ParsingTaskConfig.txt`, `IPEDConfig.txt` (enableFileParsing)
+
+**Capabilities**:
+- Parses 400+ file formats
+- Extracts embedded metadata
+- Handles container expansion
+- Processes encrypted content detection
+- Generates file previews
+
+**Special Parsers**:
+- WhatsApp databases (Android/iOS)
+- Telegram messages
+- Email formats (PST, MBOX, EML)
+- Office documents
+- PDF files
+- Mobile app databases
+- Browser history
+- P2P sharing files
+
+---
+
+### SetTypeTask
+
+**Purpose**: Sets MIME types based on file signature detection
+
+**Dependencies**: Runs after SignatureTask
+
+---
+
+### SetCategoryTask
+
+**Purpose**: Assigns files to categories based on MIME type and properties
+
+**Configuration**: Category hierarchy defined in configuration files
+
+**Examples**:
+- Documents
+- Images
+- Videos
+- Databases
+- Instant Messages
+- P2P File Sharing
+- CSAM (when detected)
+
+---
+
+## Content Analysis Tasks
+
+### RegexTask
+
+**Purpose**: Searches extracted text using regular expressions
+
+**Configuration**: `conf/RegexConfig.txt`, `IPEDConfig.txt` (enableRegexSearch)
+
+**Built-in Patterns**:
+- Email addresses
+- URLs and IP addresses
+- Credit card numbers (with Luhn validation)
+- Social security numbers
+- Brazilian documents (CPF, CNPJ, CNH, RG)
+- Phone numbers
+- Bitcoin/Ethereum/Monero/Ripple/Tron addresses
+- SWIFT codes
+- Cryptocurrency seed phrases
+- Money values
+- MAC addresses
+
+**Features**:
+- Optional JavaScript validation
+- Custom regex patterns
+- Performance-optimized scanning
+
+---
+
+### LanguageDetectTask
+
+**Purpose**: Detects the language of document text
+
+**Configuration**: `IPEDConfig.txt` (enableLanguageDetect)
+
+**Capabilities**:
+- Detects 70+ languages
+- Sets `language` metadata property
+- Useful for multi-language investigations
+
+---
+
+### NamedEntityTask
+
+**Purpose**: Recognizes named entities in text
+
+**Configuration**: `conf/NamedEntityRecognitionConfig.txt`, `IPEDConfig.txt` (enableNamedEntityRecogniton)
+
+**Requirements**: Stanford CoreNLP models (must be downloaded separately)
+
+**Detects**:
+- Person names
+- Organizations
+- Locations/places
+- Dates and times
+
+**Warning**: CPU-intensive; can increase processing time by 4x
+
+---
+
+### EntropyTask
+
+**Purpose**: Tests files for randomness to detect encryption
+
+**Configuration**: `IPEDConfig.txt` (entropyTest)
+
+**Benefits**:
+- Identifies encrypted files
+- Speeds up indexing of unallocated space
+- Reduces index size
+- Skips indexing random/encrypted content
+
+---
+
+## Image and Video Processing
+
+### ImageThumbTask
+
+**Purpose**: Generates thumbnails for images
+
+**Configuration**: `conf/ImageThumbsConfig.txt`, `IPEDConfig.txt` (enableImageThumbs)
+
+**Supported Formats**: 100+ image formats including RAW camera formats
+
+**Features**:
+- Optimized thumbnail generation
+- Handles non-standard formats
+- EXIF orientation correction
+- High-quality thumbnails
+
+---
+
+### VideoThumbTask
+
+**Purpose**: Extracts frames from videos
+
+**Configuration**: `conf/VideoThumbsConfig.txt`, `IPEDConfig.txt` (enableVideoThumbs)
+
+**Capabilities**:
+- Frame extraction at intervals
+- Thumbnail generation
+- Optional: Extract frames as sub-items for analysis
+- Supports 20+ video formats
+
+**Options**:
+- Fixed interval extraction
+- Duration-based extraction
+- Layout configuration
+
+---
+
+### DocThumbTask
+
+**Purpose**: Creates thumbnails for documents and PDFs
+
+**Configuration**: `conf/DocThumbsConfig.txt`, `IPEDConfig.txt` (enableDocThumbs)
+
+**Supported Formats**:
+- PDF documents
+- LibreOffice formats
+- Microsoft Office documents
+
+**Status**: Experimental
+
+---
+
+### ImageSimilarityTask
+
+**Purpose**: Enables visual similarity search for images
+
+**Configuration**: `IPEDConfig.txt` (enableImageSimilarity)
+
+**Requirements**: enableImageThumbs must be enabled
+
+**Features**:
+- Perceptual hashing
+- Similar image detection
+- Search by reference image
+
+---
+
+### DIETask (LedDie)
+
+**Purpose**: Fast nudity detection using random forests algorithm
+
+**Configuration**: `IPEDConfig.txt` (enableLedDie)
+
+**Output**:
+- `nudityScore` (1-1000)
+- `nudityClass` (1-5)
+
+**Performance**: Optimized for CPU processing
+
+---
+
+### PythonTask (NSFWDetection)
+
+**Purpose**: Deep learning nudity detection using Yahoo OpenNSFW
+
+**Configuration**: `IPEDConfig.txt` (enableYahooNSFWDetection)
+
+**Requirements**: Python with Keras and TensorFlow
+
+**Output**: `nsfw_nudity_score` (0-100)
+
+**Performance**: GPU highly recommended; 10x slower than LedDie on CPU
+
+---
+
+### RemoteImageClassifierTask
+
+**Purpose**: Classifies images and videos using remote service
+
+**Configuration**: `conf/RemoteImageClassifierConfig.txt`, `IPEDConfig.txt` (enableRemoteImageClassifier)
+
+**Use Case**: Centralized classification service for multiple processing nodes
+
+---
+
+### QRCodeTask
+
+**Purpose**: Detects and decodes QR codes in images
+
+**Configuration**: `IPEDConfig.txt` (enableQRCode)
+
+**Output**: Decoded QR code content as metadata
+
+---
+
+### FaceRecognitionTask (PythonTask)
+
+**Purpose**: Facial recognition and face search
+
+**Configuration**: `conf/FaceRecognitionConfig.txt`, `IPEDConfig.txt` (enableFaceRecognition)
+
+**Requirements**: Python with face_recognition library
+
+**Features**:
+- Face detection in images
+- Face matching across dataset
+- External face search
+- Optimized for CPU processing
+
+---
+
+### AgeEstimationTask (PythonTask)
+
+**Purpose**: Estimates age of faces in images
+
+**Configuration**: `conf/AgeEstimationConfig.txt`, `IPEDConfig.txt` (enableAgeEstimation)
+
+**Requirements**: Python dependencies
+
+**Output**: Estimated age range for detected faces
+
+---
+
+### CSAMDetectorTask (PythonTask)
+
+**Purpose**: Detects Child Sexual Abuse Material using AI models
+
+**Configuration**: `conf/CSAMDetectorConfig.txt`, `IPEDConfig.txt` (enableCSAMDetector)
+
+**Requirements**: 
+- Python with TensorFlow, PyTorch, or ONNX
+- Proprietary AI models
+- Thumbnails generated
+- File hashes computed
+
+**Models Available**:
+- TensorFlow (GPU)
+- TFLite (CPU)
+- PyTorch (GPU)
+- ONNX (CPU/GPU)
+
+**Output Properties**:
+- `ai:csamDetector:label` (csam/porn/other)
+- `ai:csamDetector:csam` confidence (0-100)
+- `ai:csamDetector:porn` confidence (0-100)
+- `ai:csamDetector:other` confidence (0-100)
+- Video-specific: trigger frame, hit percentage
+
+---
+
+## OCR and Transcription
+
+### OCRTask (via ParsingTask)
+
+**Purpose**: Optical Character Recognition on images and scanned documents
+
+**Configuration**: `conf/OCRConfig.txt`, `IPEDConfig.txt` (enableOCR)
+
+**Supported Languages**: English, Portuguese, Italian, German, Spanish, French
+
+**Capabilities**:
+- Image OCR
+- Scanned PDF OCR
+- Non-standard image format OCR (HEIC, PSD, WEBP, WMF, EMF, SVG, JBIG2)
+- Partially corrupted image OCR
+
+**Engine**: Tesseract 5
+
+**Warning**: Significantly increases processing time
+
+---
+
+### AudioTranscriptTask
+
+**Purpose**: Transcribes audio files to text
+
+**Configuration**: `conf/AudioTranscriptConfig.txt`, `IPEDConfig.txt` (enableAudioTranscription)
+
+**Implementations**:
+
+<Accordion title="Audio Transcription Options">
+  <AccordionItem title="VoskTranscriptTask (Default)">
+    - Local CPU transcription
+    - Small portable models included for English and Portuguese
+    - Medium quality, moderate speed
+    - No GPU required
+  </AccordionItem>
+  
+  <AccordionItem title="Wav2Vec2TranscriptTask">
+    - Local transcription using Facebook's Wav2Vec2
+    - Much better accuracy than Vosk
+    - 10x slower on CPU; GPU highly recommended
+    - Multiple language models available
+  </AccordionItem>
+  
+  <AccordionItem title="WhisperTranscriptTask">
+    - Local transcription using OpenAI Whisper
+    - Best accuracy
+    - 4x slower than Wav2Vec2
+    - High-end GPU strongly recommended
+    - Models: tiny, base, small, medium, large-v3
+  </AccordionItem>
+  
+  <AccordionItem title="RemoteTranscriptionTask">
+    - Remote transcription cluster
+    - Useful for sharing GPU resources
+    - Centralized service architecture
+  </AccordionItem>
+  
+  <AccordionItem title="GoogleTranscriptTask">
+    - Google Cloud Speech-to-Text
+    - Requires Google Cloud credentials
+    - Cost: ~$1.00 per hour of audio
+  </AccordionItem>
+  
+  <AccordionItem title="MicrosoftTranscriptTask">
+    - Microsoft Azure Speech Service
+    - Requires Azure subscription
+    - Cost: ~$1.00 per hour of audio
+  </AccordionItem>
+</Accordion>
+
+**Supported Audio Formats**: 20+ formats including 3GPP, AAC, AMR, MP4, OGG, Opus, WAV, WMA, iLBC
+
+**Features**:
+- Automatic language detection
+- Skip known files option
+- Configurable timeout
+- Audio conversion to WAV
+
+---
+
+## Data Carving
+
+### CarverTask
+
+**Purpose**: Recovers deleted or embedded files through data carving
+
+**Configuration**: `conf/CarverConfig.xml`, `IPEDConfig.txt` (enableCarving)
+
+**Requirements**: `addUnallocated` must be enabled
+
+**Capabilities**:
+- Scans unallocated space, slack space, and more
+- Recovers 40+ file formats
+- Extensible via scripting
+- Efficient: takes less than 10% of processing time
+
+**Supported File Types**:
+- Images: JPEG, PNG, GIF, BMP, TIFF, HEIC
+- Videos: MP4, MPG, WEBM, MKV
+- Documents: PDF, Office files
+- Archives: ZIP, RAR, 7-Zip, Torrent
+- P2P: eMule, Shareaza files
+
+---
+
+### LedCarveTask
+
+**Purpose**: Recovers known files from LED database based on file header
+
+**Configuration**: `IPEDConfig.txt` (enableLedCarving)
+
+**Requirements**: 
+- `addUnallocated` enabled
+- `hashesDB` configured with LED hashes imported
+
+**Method**: Matches first 64KB of carved file against LED database
+
+---
+
+### KnownMetCarveTask
+
+**Purpose**: Carves eMule "known.met" P2P files
+
+**Configuration**: `IPEDConfig.txt` (enableKnownMetCarving)
+
+**Requirements**: `addUnallocated` enabled
+
+**Use Case**: P2P file sharing investigations
+
+---
+
+## Disk and Container Processing
+
+### EmbeddedDiskProcessTask
+
+**Purpose**: Processes forensic disk images found within evidence
+
+**Configuration**: `IPEDConfig.txt` (processEmbeddedDisks)
+
+**Supported Formats**: DD, E01, EX01, VHD, VHDX, VMDK
+
+**Features**:
+- Recursive processing
+- Differential VMDK support
+- Single segment images only
+
+**Limitations**: Splitted images and snapshots not supported for embedded processing
+
+---
+
+### ExpandContainersTask (via ParsingTask)
+
+**Purpose**: Expands compressed files, emails, and Office documents
+
+**Configuration**: `IPEDConfig.txt` (expandContainers)
+
+**Configured In**: `conf/CategoriesToExpand.txt`
+
+**Expanded Types**:
+- Archives (ZIP, RAR, 7z, TAR, GZIP)
+- Email containers (PST, MBOX)
+- Email messages with attachments
+- Office documents with embedded objects
+
+---
+
+## Export and Reporting
+
+### ExportFileTask
+
+**Purpose**: Automatically exports files based on categories or keywords
+
+**Configuration**: `IPEDConfig.txt` (enableAutomaticExportFiles)
+
+**Config Files**:
+- `conf/CategoriesToExport.txt`
+- `conf/KeywordsToExport.txt`
+
+**Behavior**: When enabled, only exported files are included; case becomes datasource-independent
+
+---
+
+### ExportCSVTask
+
+**Purpose**: Exports file properties to CSV
+
+**Configuration**: `IPEDConfig.txt` (exportFileProps)
+
+**Output**: `Lista de Arquivos.csv` with all file metadata
+
+---
+
+### HTMLReportTask
+
+**Purpose**: Generates HTML reports from evidence
+
+**Configuration**: `conf/HTMLReportConfig.txt`, `IPEDConfig.txt` (enableHTMLReport)
+
+**Features**:
+- Portable case reports
+- Bookmark-based filtering
+- Thumbnail support
+- Interactive navigation
+
+---
+
+### MinIOTask
+
+**Purpose**: Exports files to MinIO object storage cluster
+
+**Configuration**: `conf/MinIOConfig.txt`, `IPEDConfig.txt` (enableMinIO)
+
+**Use Case**: Distributed storage for large-scale investigations
+
+---
+
+### ElasticSearchIndexTask
+
+**Purpose**: Indexes case data to ElasticSearch/OpenSearch cluster
+
+**Configuration**: `conf/ElasticSearchConfig.txt`, `IPEDConfig.txt` (enableIndexToElasticSearch)
+
+**Features**:
+- Distributed indexing
+- Advanced search capabilities
+- Multi-case querying
+
+---
+
+## Indexing and Search
+
+### IndexTask
+
+**Purpose**: Creates local Lucene search index
+
+**Configuration**: `conf/IndexTaskConfig.txt`, `IPEDConfig.txt` (indexFileContents)
+
+**Capabilities**:
+- Full-text indexing
+- Metadata indexing
+- Advanced search syntax
+- Fast search performance
+
+**Options**:
+- Index file contents (full-text)
+- Index only properties (metadata)
+
+---
+
+## Graph and Communications
+
+### GraphTask (via ParsingTask)
+
+**Purpose**: Creates communication link graphs
+
+**Configuration**: `conf/GraphConfig.json`, `IPEDConfig.txt` (enableGraphGeneration)
+
+**Analyzes**:
+- Phone calls
+- Text messages
+- Emails
+- Instant messages
+- Contact relationships
+
+**Output**: Graph visualization data for relationship analysis
+
+---
+
+## Utility Tasks
+
+### DuplicateTask
+
+**Purpose**: Identifies duplicate files by hash
+
+**Features**:
+- Links duplicates
+- Optional duplicate exclusion (dangerous)
+- Preserves first occurrence
+
+---
+
+### IgnoreHardLinkTask
+
+**Purpose**: Handles NTFS hard links to avoid duplicate processing
+
+**Behavior**: Detects hard links and marks secondary references
+
+---
+
+### TempFileTask
+
+**Purpose**: Manages temporary file extraction for processing
+
+**Configuration**: `conf/TempFileTaskConfig.txt`
+
+**Function**: Extracts files to temp directory for external tool processing
+
+---
+
+### FragmentLargeBinaryTask
+
+**Purpose**: Fragments very large binary files for efficient indexing
+
+**Configuration**: `conf/SplitLargeBinaryConfig.txt`
+
+**Use Case**: Prevents memory issues with huge files
+
+---
+
+### MakePreviewTask
+
+**Purpose**: Generates file previews for analysis interface
+
+**Configuration**: `conf/MakePreviewConfig.txt`
+
+---
+
+### ThumbTask
+
+**Purpose**: Generic thumbnail generation coordinator
+
+**Delegates to**: ImageThumbTask, VideoThumbTask, DocThumbTask
+
+---
+
+### SkipCommitedTask
+
+**Purpose**: Skips already processed items on --continue
+
+**Use Case**: Resuming interrupted processing
+
+---
+
+### ScriptTask
+
+**Purpose**: Executes custom JavaScript processing scripts
+
+**Location**: `scripts/tasks/`
+
+**Use Cases**:
+- Custom filtering
+- Property modification
+- Custom analysis logic
+
+---
+
+### PythonTask
+
+**Purpose**: Executes custom Python processing scripts
+
+**Location**: `scripts/tasks/`
+
+**Requirements**: Embedded Python distribution or system Python with JEP
+
+**Use Cases**:
+- Machine learning tasks
+- Advanced image processing
+- Custom parsers
+
+---
+
+### JumpListTask
+
+**Purpose**: Parses Windows Jump List files
+
+**Configuration**: `conf/AppIDs.txt`
+
+**Analyzes**:
+- Automatic destinations
+- Custom destinations
+- Recent document access
+- Application usage
+
+---
+
+### P2PBookmarker
+
+**Purpose**: Automatically bookmarks P2P file sharing evidence
+
+**Detects**:
+- eMule downloads
+- BitTorrent activity
+- Shareaza sharing
+- Ares downloads
+
+---
+
+### SearchHardwareWallets (PythonTask)
+
+**Purpose**: Searches for cryptocurrency hardware wallet identifiers
+
+**Configuration**: `IPEDConfig.txt` (enableSearchHardwareWallets)
+
+**Detects**: Vendor and product IDs for crypto hardware wallets
+
+---
+
+## Task Execution Order
+
+Tasks execute in a specific order to ensure dependencies are met:
+
+1. **SignatureTask** - Identify file types
+2. **SetTypeTask** - Set MIME types
+3. **HashTask** - Calculate hashes
+4. **HashDBLookupTask** - Look up known files
+5. **ParsingTask** - Extract content and metadata
+6. **LanguageDetectTask** - Detect languages
+7. **RegexTask** - Search patterns
+8. **ImageThumbTask** - Generate image thumbnails
+9. **VideoThumbTask** - Extract video frames
+10. **DIETask** - Nudity detection
+11. **OCRTask** - Optical character recognition
+12. **AudioTranscriptTask** - Transcribe audio
+13. **FaceRecognitionTask** - Detect faces
+14. **CarverTask** - Carve deleted files
+15. **IndexTask** - Create search index
+16. **ExportTasks** - Generate reports and exports
+
+## Performance Considerations
+
+<Warning>
+**Resource-Intensive Tasks**:
+
+- **NamedEntityTask**: Can increase processing time by 4x
+- **enableOCR**: Significantly increases processing time
+- **enableAudioTranscription**: Time multiplier depends on implementation
+- **enableYahooNSFWDetection**: 10x+ slower than LedDie without GPU
+- **enableFaceRecognition**: GPU recommended for large cases
+- **enableCarving**: Adds 10-15% to processing time
+</Warning>
+
+<Note>
+**Optimization Tips**:
+
+1. Enable `indexTempOnSSD` if temp directory is on SSD (up to 2x faster)
+2. Adjust `numThreads` based on CPU cores and RAM
+3. Skip known files in OCR and transcription to save time
+4. Use fast mode profile for quick triage
+5. Enable GPU processing for AI-based tasks
+</Note>
+
+## Related Resources
+
+- [Configuration Options](/reference/configuration-options) - Configure task settings
+- [Supported Formats](/reference/supported-formats) - View format-specific task support
+- [Troubleshooting](/reference/troubleshooting) - Task-related issues

@@ -1,0 +1,564 @@
+---
+title: 'P2P Application Parsers'
+description: 'Extract sharing records from BitTorrent, eMule, Shareaza, and Ares Galaxy'
+icon: 'share-nodes'
+---
+
+## Overview
+
+IPED provides specialized parsers for peer-to-peer (P2P) file sharing applications, extracting shared file catalogs, download records, and hash information. These parsers are critical for copyright infringement and CSAM investigations.
+
+## BitTorrent Parser
+
+Processes .torrent files and BitTorrent client resume data.
+
+### Supported Artifacts
+
+<ResponseField name="*.torrent" type="Torrent File">
+  Bencoded torrent metadata files
+</ResponseField>
+
+<ResponseField name="resume.dat" type="BitTorrent Resume">
+  BitTorrent client download state (bencoded)
+</ResponseField>
+
+<ResponseField name="*.torrent.resume" type="Transmission Resume">
+  Transmission client resume data
+</ResponseField>
+
+### Torrent File Structure
+
+Torrent files use **Bencode** encoding:
+
+```python Torrent File Format
+{
+    "announce": "tracker_url",
+    "comment": "optional comment",
+    "created by": "client name",
+    "creation date": unix_timestamp,
+    "info": {
+        "name": "file or directory name",
+        "piece length": chunk_size_bytes,
+        "pieces": concatenated_sha1_hashes,
+        "length": file_size,  // Single file
+        "files": [            // Multi-file torrent
+            {
+                "path": ["dir", "filename"],
+                "length": file_size,
+                "md5sum": "optional_md5",
+                "sha1": "optional_sha1",
+                "ed2k": "optional_edonkey"
+            }
+        ]
+    }
+}
+```
+
+### Extracted Metadata
+
+```java Torrent Properties
+// Torrent Info
+ExtraProperties.P2P_META_PREFIX + "torrentInfoHash"     // SHA-1 of info dict
+ExtraProperties.P2P_META_PREFIX + "torrentCreationDate" // Creation timestamp
+ExtraProperties.P2P_META_PREFIX + "torrentFilesFoundInCase" // Match count
+
+// File Linking
+ExtraProperties.LINKED_ITEMS      // Hash queries (md5:, sha-1:, edonkey:)
+ExtraProperties.SHARED_HASHES     // N/A for torrents (passive)
+```
+
+### Info Hash Calculation
+
+<Info>
+The **info hash** is the SHA-1 hash of the bencoded info dictionary, used as unique torrent identifier.
+</Info>
+
+```java
+byte[] infoBytes = info.getDictBytes();
+String infoHash = DigestUtils.sha1Hex(infoBytes).toUpperCase();
+metadata.set(TORRENT_INFO_HASH, infoHash);
+```
+
+### Piece Matching Algorithm
+
+IPED can link torrent files to case items by matching piece hashes:
+
+<Steps>
+  <Step title="Length Matching">
+    Search case items with exact file size from torrent
+  </Step>
+  <Step title="Hash Verification">
+    Read file in piece-sized chunks and compute SHA-1
+  </Step>
+  <Step title="Compare Hashes">
+    Match computed hashes against torrent piece hashes
+  </Step>
+  <Step title="Record Match">
+    Link items when all pieces match
+  </Step>
+</Steps>
+
+```java Piece Matching
+// For each file in torrent:
+1. Query: BasicProps.LENGTH + ":" + fileLength
+2. For each matching item:
+   - Calculate SHA-1 of piece-sized chunks
+   - Compare with torrent pieces array
+   - If all match: link via LINKED_ITEMS
+```
+
+### HTML Report
+
+<Tabs>
+  <Tab title="General Info">
+    ```
+    Name:            torrent_name
+    Info Hash:       40-char SHA-1
+    Piece Length:    16777216 (16 MB)
+    Number of Pieces: 128
+    Number of Files: 5
+    Files Found:     2 (when matched)
+    Announce:        tracker_url
+    Comment:         user comment
+    Created By:      client/version
+    Creation Date:   YYYY-MM-DD HH:MM:SS UTC
+    ```
+  </Tab>
+  <Tab title="Files Table">
+    ```
+    #  | Full Path        | Size        | MD5  | SHA1 | ED2K | Found | Path in Case
+    ---|------------------|-------------|------|------|------|-------|-------------
+    1  | video/movie.mp4  | 1073741824  | ... | ...  | ...  | Yes   | /path/to/file
+    2  | video/sub.srt    | 65536       | -   | -    | -    | No    |
+    ```
+  </Tab>
+  <Tab title="Pieces Table">
+    ```
+    Piece | SHA-1 Hash
+    ------|----------------------------------------
+    1     | A1B2C3D4E5F6G7H8I9J0K1L2M3N4O5P6Q7R8S9T0
+    2     | B2C3D4E5F6G7H8I9J0K1L2M3N4O5P6Q7R8S9T0U1
+    ...   | ...
+    ```
+  </Tab>
+</Tabs>
+
+### Configuration
+
+```java TorrentFileParser
+// No @Field configuration options
+// Behavior controlled by file content and case items
+```
+
+## eMule Parser
+
+Extracts shared file records from eMule known.met database.
+
+### Supported Artifacts
+
+<ResponseField name="known.met" type="eMule Database">
+  Binary format storing shared files with transfer statistics
+</ResponseField>
+
+<ResponseField name="part.met" type="Partial Download">
+  Incomplete download metadata
+</ResponseField>
+
+### Known.met Structure
+
+```cpp eMule Record Format
+struct KnownMetEntry {
+    uint32 fileSize;
+    uint128 hash;           // ED2K hash
+    uint16 partCount;
+    uint16 tagCount;
+    Tag tags[];            // Variable length tags
+};
+
+// Common tags:
+// 0x01 (FT_FILENAME)      - File name
+// 0x02 (FT_FILESIZE)      - File size
+// 0x03 (FT_FILETYPE)      - MIME type
+// 0x13 (FT_ATTRANSFERRED) - Bytes uploaded
+// 0x15 (FT_ATREQUESTED)   - Request count
+// 0xF9 (FT_LASTSEENCOMPLETE) - Last complete date
+```
+
+### Extracted Metadata
+
+```java eMule Properties
+ExtraProperties.P2P_META_PREFIX + "name"           // File name
+ExtraProperties.P2P_META_PREFIX + "ed2k"          // eDonkey hash
+ExtraProperties.P2P_META_PREFIX + "fileSize"      // File size
+ExtraProperties.P2P_META_PREFIX + "lastModified"  // Last modification
+ExtraProperties.P2P_META_PREFIX + "lastPublishedKad" // Kad publish time
+ExtraProperties.P2P_META_PREFIX + "lastShared"    // Last share time
+ExtraProperties.P2P_META_PREFIX + "totalRequests" // Download requests
+ExtraProperties.P2P_META_PREFIX + "acceptedRequests" // Accepted requests
+ExtraProperties.P2P_META_PREFIX + "bytesTransfered" // Bytes uploaded
+
+ExtraProperties.SHARED_HASHES                     // ED2K hash
+ExtraProperties.LINKED_ITEMS                      // edonkey:HASH
+ExtraProperties.P2P_REGISTRY_COUNT                // Total entries
+ExtraProperties.CSAM_HASH_HITS                    // Hash DB matches
+```
+
+### Hash Detection
+
+<Warning>
+eMule parser integrates with CSAM hash databases. Matches are highlighted in red in reports.
+</Warning>
+
+```java
+List<String> hashSets = ChildPornHashLookup.lookupHash("edonkey", hash);
+if (!hashSets.isEmpty()) {
+    hashDBHits++;
+    trClass = "rr";  // Red row styling
+    entry.setFoundInHashDB(hashSets.toString());
+    metadata.set(ExtraProperties.CSAM_HASH_HITS, Integer.toString(hashDBHits));
+}
+```
+
+### HTML Report
+
+```
+Header: "Files found in CSAM hash databases are highlighted in red"
+
+Table:
+# | Name | Hash | Last Modified | Last Published | Last Shared | Size | 
+  | Requests | Accepted | Bytes Sent | Temp File | Found in HashDB | Found in Case
+```
+
+### Configuration
+
+```java KnownMetParser
+@Field
+public void setExtractEntries(boolean value);
+// Extract individual entries as items (default: false)
+```
+
+## Shareaza Parser
+
+Processes Shareaza Library1.dat and Library2.dat files.
+
+### Supported Artifacts
+
+<ResponseField name="Library1.dat" type="Shareaza Library">
+  MFC serialized library database (older format)
+</ResponseField>
+
+<ResponseField name="Library2.dat" type="Shareaza Library">
+  MFC serialized library database (newer format)
+</ResponseField>
+
+### MFC Serialization
+
+Shareaza uses **Microsoft Foundation Classes (MFC)** serialization:
+
+```java MFC Structure
+// MFCParser reads:
+// - CArchive headers
+// - CObject class tags
+// - Nested object hierarchies
+// - String tables
+// - Variable-length arrays
+```
+
+### Library Structure
+
+```java Shareaza Object Model
+Library
+├── LibraryFolders
+│   ├── LibraryFolder[]
+│   │   ├── path: String
+│   │   ├── shared: Boolean
+│   │   ├── LibraryFile[]
+│   │   └── LibraryFolder[] (nested)
+│   └── AlbumRoot
+│       └── AlbumFolder[] (virtual organization)
+└── IndexToFile: Map<Integer, LibraryFile>
+```
+
+### Extracted Metadata
+
+```java Shareaza Properties
+ExtraProperties.P2P_META_PREFIX + "name"          // File name
+ExtraProperties.P2P_META_PREFIX + "sha1"         // SHA-1 hash
+ExtraProperties.P2P_META_PREFIX + "md5"          // MD5 hash
+ExtraProperties.P2P_META_PREFIX + "ed2k"         // ED2K hash
+ExtraProperties.P2P_META_PREFIX + "tiger"        // Tiger tree hash
+ExtraProperties.P2P_META_PREFIX + "size"         // File size
+ExtraProperties.P2P_META_PREFIX + "shared"       // Sharing status
+ExtraProperties.P2P_META_PREFIX + "hitsTotal"    // Total hits
+ExtraProperties.P2P_META_PREFIX + "uploadsTotal" // Upload count
+
+ExtraProperties.SHARED_HASHES                    // MD5, SHA-1, ED2K
+ExtraProperties.LINKED_ITEMS                     // sha-1:HASH
+```
+
+### Album Support
+
+Shareaza supports virtual albums:
+
+```java
+// AlbumFolder links to LibraryFile by index
+AlbumFolder
+├── name: String
+├── albumFolders: AlbumFolder[]
+└── albumFileIndexes: Integer[] -> LibraryFile
+```
+
+### Configuration
+
+```java ShareazaLibraryDatParser
+@Field
+public void setExtractEntries(boolean value);
+// Extract files/folders as items (default: false)
+```
+
+## Ares Galaxy Parser
+
+Extracts shared files from Ares Galaxy ShareH.dat and ShareL.dat.
+
+### Supported Artifacts
+
+<ResponseField name="My Shared Folder/ShareH.dat" type="Ares Database">
+  Ares sharing database (binary format)
+</ResponseField>
+
+<ResponseField name="My Shared Folder/ShareL.dat" type="Ares Database">
+  Alternative Ares sharing database
+</ResponseField>
+
+### Database Format
+
+```cpp Ares Share Record
+struct AresEntry {
+    uint32 recordSize;
+    byte flags;
+    string title;          // UTF-8 or Latin-1
+    string path;
+    byte[20] sha1Hash;
+    FILETIME fileDate;
+    uint64 fileSize;
+    byte shared;           // Boolean
+    byte corrupted;        // Boolean
+    string artist;         // Optional
+    string album;          // Optional
+    string category;       // Optional
+    string url;            // Optional
+    string comment;        // Optional
+};
+```
+
+### Extracted Metadata
+
+```java Ares Properties
+ExtraProperties.P2P_META_PREFIX + "name"         // Title
+ExtraProperties.P2P_META_PREFIX + "sha1"        // SHA-1 hash
+ExtraProperties.P2P_META_PREFIX + "path"        // File path
+ExtraProperties.P2P_META_PREFIX + "fileDate"    // File date
+ExtraProperties.P2P_META_PREFIX + "fileSize"    // Size
+ExtraProperties.P2P_META_PREFIX + "shared"      // Shared flag
+ExtraProperties.P2P_META_PREFIX + "corrupted"   // Corruption flag
+ExtraProperties.P2P_META_PREFIX + "artist"      // MP3 artist
+ExtraProperties.P2P_META_PREFIX + "album"       // MP3 album
+ExtraProperties.P2P_META_PREFIX + "category"    // File category
+ExtraProperties.P2P_META_PREFIX + "url"         // Associated URL
+ExtraProperties.P2P_META_PREFIX + "comment"     // User comment
+
+ExtraProperties.SHARED_HASHES                   // SHA-1 for shared files
+ExtraProperties.LINKED_ITEMS                    // sha-1:HASH
+```
+
+### Configuration
+
+```java AresParser
+@Field
+public void setExtractEntries(boolean value);
+// Extract individual entries (default: false)
+```
+
+## Common P2P Features
+
+### Hash Standardization
+
+All P2P parsers normalize hash property names:
+
+<CardGroup cols={3}>
+  <Card title="MD5" icon="fingerprint">
+    `md5:HASH` for lookups
+  </Card>
+  <Card title="SHA-1" icon="fingerprint">
+    `sha-1:HASH` for queries
+  </Card>
+  <Card title="ED2K" icon="fingerprint">
+    `edonkey:HASH` for eMule
+  </Card>
+</CardGroup>
+
+### Case Item Linking
+
+P2P parsers search case items by hash:
+
+```java P2PUtil.searchItemInCase
+IItemReader item = searcher.search(
+    hashType + ":" + hashValue
+).stream().findFirst().orElse(null);
+
+if (item != null) {
+    // Display name with hyperlink
+    P2PUtil.printNameWithLink(xhtml, item, fileName);
+}
+```
+
+### Hash Database Integration
+
+<Tabs>
+  <Tab title="Lookup">
+    ```java
+    List<String> hashSets = ChildPornHashLookup.lookupHash(
+        hashType,  // "sha-1", "md5", "edonkey"
+        hashValue
+    );
+    ```
+  </Tab>
+  <Tab title="Merge with Case">
+    ```java
+    // If found in case, check item's hash too
+    hashSets = ChildPornHashLookup.lookupHashAndMerge(
+        hashType, hashValue, existingHashSets
+    );
+    ```
+  </Tab>
+  <Tab title="Metadata">
+    ```java
+    if (!hashSets.isEmpty()) {
+        metadata.set(ExtraProperties.HASHDB_STATUS, "pedo");
+        for (String set : hashSets) {
+            metadata.add(ExtraProperties.HASHDB_SET, set);
+        }
+    }
+    ```
+  </Tab>
+</Tabs>
+
+### Shared Hash Collection
+
+```java
+// All parsers collect shared file hashes
+if (file.isShared()) {
+    metadata.add(ExtraProperties.SHARED_HASHES, file.getHash());
+}
+
+// Used for:
+// - Identifying files offered for sharing
+// - Copyright infringement evidence
+// - Distribution vs. possession determination
+```
+
+### HTML Report Styling
+
+```css
+/* Red highlighting for hash hits */
+.rr { 
+    background-color: #E77770; 
+    vertical-align: middle; 
+}
+
+/* Hash column monospace */
+.e { 
+    font-family: monospace;
+    word-wrap: break-word;
+}
+
+/* Centered hash display with space */
+hash.substring(0, 20) + " " + hash.substring(20)
+```
+
+## Statistics Extraction
+
+### eMule Statistics
+
+<ParamField path="totalRequests" type="long">
+  Total number of download requests received
+</ParamField>
+
+<ParamField path="acceptedRequests" type="long">
+  Number of accepted upload requests
+</ParamField>
+
+<ParamField path="bytesTransfered" type="long">
+  Total bytes uploaded to other users
+</ParamField>
+
+### Shareaza Statistics
+
+<ParamField path="hitsTotal" type="int">
+  Total search result hits
+</ParamField>
+
+<ParamField path="uploadsTotal" type="int">
+  Number of completed uploads
+</ParamField>
+
+## Registry Counts
+
+All parsers report entry counts:
+
+```java
+metadata.set(ExtraProperties.P2P_REGISTRY_COUNT, 
+            String.valueOf(entries.size()));
+```
+
+## Entry Extraction
+
+When `extractEntries=true`, parsers use BeanMetadataExtraction:
+
+```java
+BeanMetadataExtraction bme = new BeanMetadataExtraction(
+    ExtraProperties.P2P_META_PREFIX,
+    ENTRY_MIME_TYPE
+);
+
+// Property name mapping
+bme.registerPropertyNameMapping(EntryClass.class, "hash", "sha1");
+
+// Value transformation
+bme.registerTransformationMapping(
+    EntryClass.class,
+    ExtraProperties.LINKED_ITEMS,
+    "sha-1:${hash}"
+);
+
+// Extract
+bme.extractEmbedded(index, context, metadata, handler, entry);
+```
+
+## Best Practices
+
+<Steps>
+  <Step title="Enable Hash Databases">
+    Configure CSAM hash databases for automatic detection
+  </Step>
+  <Step title="Extract Individual Entries">
+    Set `extractEntries=true` for detailed analysis
+  </Step>
+  <Step title="Search by Multiple Hashes">
+    Use all available hash types (MD5, SHA-1, ED2K) for correlation
+  </Step>
+  <Step title="Document Sharing Evidence">
+    Export reports showing shared status and upload statistics
+  </Step>
+</Steps>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Chat Parsers" icon="comments" href="/parsers/chat-applications">
+    Learn about messaging application parsers
+  </Card>
+  <Card title="Mobile Artifacts" icon="mobile" href="/parsers/mobile-artifacts">
+    Explore mobile device artifact parsers
+  </Card>
+</CardGroup>

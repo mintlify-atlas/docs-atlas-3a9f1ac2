@@ -1,0 +1,578 @@
+---
+title: Item API
+description: Access and manipulate evidence items using IItemReader and IItem interfaces
+---
+
+The Item API provides access to evidence items and their properties through two core interfaces:
+
+- **IItemReader**: Read-only access to item properties and content
+- **IItem**: Full read-write access for processing tasks
+
+## IItemReader Interface
+
+The `IItemReader` interface provides read-only access to evidence items. It is the base interface extended by `IItem`.
+
+**Package**: `iped.data`  
+**Source**: `iped-api/src/main/java/iped/data/IItemReader.java`
+
+### Basic Properties
+
+<ParamField path="getId()" type="int">
+  Returns the unique identifier of the item within the case
+</ParamField>
+
+<ParamField path="getName()" type="String">
+  Returns the filename of the item
+</ParamField>
+
+<ParamField path="getPath()" type="String">
+  Returns the full path of the item including parent directories
+</ParamField>
+
+<ParamField path="getLength()" type="Long">
+  Returns the size of the item in bytes
+</ParamField>
+
+<ParamField path="getHash()" type="String">
+  Returns the hash value of the item (if computed during processing)
+</ParamField>
+
+### Example: Basic Property Access
+
+```java /api/item-api.mdx:55:72
+import iped.data.IItem;
+import iped.engine.data.IPEDSource;
+
+File caseDir = new File("/path/to/case");
+IPEDSource source = new IPEDSource(caseDir);
+
+// Get item by ID
+IItem item = source.getItemByID(12345);
+
+System.out.println("Name: " + item.getName());
+System.out.println("Path: " + item.getPath());
+System.out.println("Size: " + item.getLength() + " bytes");
+System.out.println("Hash: " + item.getHash());
+System.out.println("ID: " + item.getId());
+
+source.close();
+```
+
+### File Type Information
+
+<ParamField path="getExt()" type="String">
+  Returns the original file extension
+</ParamField>
+
+<ParamField path="getType()" type="String">
+  Returns the detected file type extension based on signature analysis
+</ParamField>
+
+<ParamField path="getMediaType()" type="MediaType">
+  Returns the Apache Tika MediaType detected from file signature analysis
+</ParamField>
+
+<ParamField path="getCategorySet()" type="HashSet<String>">
+  Returns the set of categories assigned to this item
+</ParamField>
+
+### Example: File Type Detection
+
+```java
+IItem item = source.getItemByID(12345);
+
+System.out.println("Original Extension: " + item.getExt());
+System.out.println("Detected Type: " + item.getType());
+System.out.println("Media Type: " + item.getMediaType());
+System.out.println("Categories: " + item.getCategorySet());
+
+// Check if item is an image
+if (item.getCategorySet().contains("images")) {
+    System.out.println("This is an image file");
+}
+```
+
+### Hierarchical Properties
+
+<ParamField path="getParentId()" type="Integer">
+  Returns the ID of the parent item (null if root level)
+</ParamField>
+
+<ParamField path="getSubitemId()" type="Integer">
+  Returns the subitem order within its parent, or null if not a subitem
+</ParamField>
+
+<ParamField path="isSubItem()" type="boolean">
+  Returns true if this is a subitem extracted from a container (e.g., file within a ZIP)
+</ParamField>
+
+<ParamField path="isDir()" type="boolean">
+  Returns true if the item is a directory
+</ParamField>
+
+<ParamField path="isRoot()" type="boolean">
+  Returns true if this is a root item
+</ParamField>
+
+<ParamField path="hasChildren()" type="boolean">
+  Returns true if the item has child items (subitems or carved items)
+</ParamField>
+
+### Example: Navigating Hierarchy
+
+```java
+IItem item = source.getItemByID(12345);
+
+if (item.isSubItem()) {
+    Integer parentId = item.getParentId();
+    IItem parent = source.getItemByID(parentId);
+    System.out.println("Parent: " + parent.getName());
+}
+
+if (item.hasChildren()) {
+    System.out.println("This item contains subitems");
+}
+```
+
+### State Flags
+
+<ParamField path="isDeleted()" type="boolean">
+  Returns true if the item is a deleted file
+</ParamField>
+
+<ParamField path="isCarved()" type="boolean">
+  Returns true if the item was recovered through data carving
+</ParamField>
+
+<ParamField path="isTimedOut()" type="boolean">
+  Returns true if parsing of the item resulted in a timeout
+</ParamField>
+
+### Timestamps
+
+<ParamField path="getModDate()" type="Date">
+  Returns the last modification date of the file
+</ParamField>
+
+<ParamField path="getCreationDate()" type="Date">
+  Returns the creation date of the file
+</ParamField>
+
+<ParamField path="getAccessDate()" type="Date">
+  Returns the last access date of the file
+</ParamField>
+
+<ParamField path="getChangeDate()" type="Date">
+  Returns the change date of the file (filesystem metadata change)
+</ParamField>
+
+### Example: Date Analysis
+
+```java
+IItem item = source.getItemByID(12345);
+
+SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+
+Date created = item.getCreationDate();
+Date modified = item.getModDate();
+Date accessed = item.getAccessDate();
+
+if (created != null) {
+    System.out.println("Created: " + sdf.format(created));
+}
+if (modified != null) {
+    System.out.println("Modified: " + sdf.format(modified));
+}
+if (accessed != null) {
+    System.out.println("Accessed: " + sdf.format(accessed));
+}
+```
+
+### Content Access
+
+<ParamField path="getBufferedInputStream()" type="BufferedInputStream">
+  Returns a buffered input stream to read the item's raw content. **Preferred method** for streaming access.
+</ParamField>
+
+<ParamField path="getSeekableInputStream()" type="SeekableInputStream">
+  Returns a seekable input stream allowing random access to content
+</ParamField>
+
+<ParamField path="getImageInputStream()" type="ImageInputStream">
+  Returns an ImageInputStream for image processing
+</ParamField>
+
+<ParamField path="getTempFile()" type="File">
+  Returns a temporary file containing the item's content. **Avoid using** if you can work with streams, as this spools data to disk.
+</ParamField>
+
+<ParamField path="getInputStreamFactory()" type="ISeekableInputStreamFactory">
+  Returns a factory for creating multiple input streams to the same item
+</ParamField>
+
+### Example: Reading Content
+
+```java
+import java.io.BufferedInputStream;
+import java.io.IOException;
+import org.apache.commons.io.IOUtils;
+
+IItem item = source.getItemByID(12345);
+
+// Preferred: Stream content
+try (BufferedInputStream is = item.getBufferedInputStream()) {
+    byte[] content = IOUtils.toByteArray(is);
+    System.out.println("Read " + content.length + " bytes");
+}
+
+// For seekable access
+try (SeekableInputStream sis = item.getSeekableInputStream()) {
+    sis.seek(100);
+    byte[] chunk = new byte[50];
+    sis.read(chunk);
+}
+
+// Avoid: Creates temporary file
+File tempFile = item.getTempFile();
+```
+
+<Warning>
+  **Performance**: Always prefer streaming methods (`getBufferedInputStream()`, `getSeekableInputStream()`) over `getTempFile()` to avoid unnecessary disk I/O.
+</Warning>
+
+### Preview and Thumbnails
+
+<ParamField path="hasPreview()" type="boolean">
+  Returns true if a preview/view file exists for this item
+</ParamField>
+
+<ParamField path="getViewFile()" type="File">
+  Returns the view/preview file path (relative to case), or null if none exists
+</ParamField>
+
+<ParamField path="getPreviewExt()" type="String">
+  Returns the file extension of the preview file
+</ParamField>
+
+<ParamField path="getThumb()" type="byte[]">
+  Returns the thumbnail image as a byte array
+</ParamField>
+
+### Metadata
+
+<ParamField path="getMetadata()" type="Metadata">
+  Returns the Apache Tika Metadata object containing all extracted metadata
+</ParamField>
+
+<ParamField path="getExtraAttribute(String key)" type="Object">
+  Returns the value of a custom extra attribute set by processing modules
+</ParamField>
+
+<ParamField path="getExtraAttributeMap()" type="Map<String, Object>">
+  Returns the map of all extra attributes
+</ParamField>
+
+### Example: Accessing Metadata
+
+```java
+import org.apache.tika.metadata.Metadata;
+
+IItem item = source.getItemByID(12345);
+
+Metadata metadata = item.getMetadata();
+
+// Access standard metadata
+String author = metadata.get("Author");
+String title = metadata.get("title");
+
+System.out.println("Author: " + author);
+System.out.println("Title: " + title);
+
+// Access extra attributes set by custom tasks
+Object customAttr = item.getExtraAttribute("customProperty");
+if (customAttr != null) {
+    System.out.println("Custom: " + customAttr);
+}
+```
+
+### Data Source
+
+<ParamField path="getDataSource()" type="IDataSource">
+  Returns the data source (evidence) that contains this item
+</ParamField>
+
+<ParamField path="getIdInDataSource()" type="String">
+  Returns the identifier of this item within its original data source
+</ParamField>
+
+## IItem Interface
+
+The `IItem` interface extends `IItemReader` with write operations for use in processing tasks.
+
+**Package**: `iped.data`  
+**Source**: `iped-api/src/main/java/iped/data/IItem.java`
+
+### Modifying Properties
+
+<ParamField path="setName(String name)" type="void">
+  Sets the filename
+</ParamField>
+
+<ParamField path="setExtension(String ext)" type="void">
+  Sets the file extension
+</ParamField>
+
+<ParamField path="setMediaType(MediaType mediaType)" type="void">
+  Sets the detected media type
+</ParamField>
+
+<ParamField path="setLength(Long length)" type="void">
+  Sets the file size in bytes
+</ParamField>
+
+<ParamField path="setHash(String hash)" type="void">
+  Sets the hash value
+</ParamField>
+
+### Category Management
+
+<ParamField path="addCategory(String category)" type="void">
+  Adds the item to a category
+</ParamField>
+
+<ParamField path="removeCategory(String category)" type="void">
+  Removes the item from a category
+</ParamField>
+
+<ParamField path="setCategory(String category)" type="void">
+  Replaces all categories with a single category
+</ParamField>
+
+### Example: Category Management
+
+```java
+IItem item = source.getItemByID(12345);
+
+// Add to categories
+item.addCategory("suspicious");
+item.addCategory("encrypted");
+
+// Check categories
+if (item.getCategorySet().contains("encrypted")) {
+    System.out.println("Item is encrypted");
+}
+
+// Remove category
+item.removeCategory("encrypted");
+```
+
+### State Management
+
+<ParamField path="setDeleted(boolean deleted)" type="void">
+  Marks the item as deleted
+</ParamField>
+
+<ParamField path="setCarved(boolean carved)" type="void">
+  Marks the item as recovered through carving
+</ParamField>
+
+<ParamField path="setToIgnore(boolean toIgnore)" type="void">
+  Marks the item to be ignored by subsequent processing tasks and excluded from the case
+</ParamField>
+
+<ParamField path="setAddToCase(boolean addToCase)" type="void">
+  Sets whether the item should be added to the final case
+</ParamField>
+
+<ParamField path="setToExtract(boolean toExtract)" type="void">
+  Sets whether the item should be extracted/exported
+</ParamField>
+
+### Extra Attributes
+
+<ParamField path="setExtraAttribute(String key, Object value)" type="void">
+  Sets a custom extra attribute that will be indexed and searchable
+</ParamField>
+
+<ParamField path="setTempAttribute(String key, Object value)" type="void">
+  Sets a temporary attribute (not indexed, used only during processing)
+</ParamField>
+
+### Example: Custom Attributes in Task
+
+```java
+public class CustomAnalysisTask extends AbstractTask {
+    @Override
+    protected void process(IItem item) throws Exception {
+        // Analyze content
+        double suspicionScore = analyzeContent(item);
+        
+        // Store result as extra attribute
+        item.setExtraAttribute("suspicionScore", suspicionScore);
+        
+        // Add to category if suspicious
+        if (suspicionScore > 0.8) {
+            item.addCategory("high-risk");
+        }
+        
+        // Temporary processing state (not indexed)
+        item.setTempAttribute("processingTimestamp", System.currentTimeMillis());
+    }
+}
+```
+
+### Resource Management
+
+<ParamField path="dispose()" type="void">
+  Releases resources used by the item, including temporary files and file handles. **Important**: Always call when done processing.
+</ParamField>
+
+<ParamField path="createChildItem()" type="IItem">
+  Creates a new child item (subitem) of this item. Used when extracting embedded content.
+</ParamField>
+
+### Example: Creating Subitems
+
+```java
+public class ContainerExpansionTask extends AbstractTask {
+    @Override
+    protected void process(IItem item) throws Exception {
+        if (isContainer(item)) {
+            List<ExtractedFile> files = extractFiles(item);
+            
+            for (ExtractedFile file : files) {
+                // Create child item
+                IItem subitem = item.createChildItem();
+                subitem.setName(file.getName());
+                subitem.setLength(file.getSize());
+                subitem.setSubItem(true);
+                subitem.setParentId(item.getId());
+                
+                // Set content factory
+                subitem.setInputStreamFactory(
+                    new ByteArrayInputStreamFactory(file.getContent())
+                );
+                
+                // Process subitem through pipeline
+                worker.processNewItem(subitem);
+            }
+            
+            item.setHasChildren(true);
+        }
+    }
+}
+```
+
+## IIPEDSource Interface
+
+The `IIPEDSource` interface provides access to IPED cases and their indices.
+
+**Package**: `iped.data`  
+**Source**: `iped-api/src/main/java/iped/data/IIPEDSource.java`
+
+### Opening Cases
+
+<ParamField path="IPEDSource(File casePath)" type="constructor">
+  Opens an IPED case from the specified directory
+</ParamField>
+
+### Retrieving Items
+
+<ParamField path="getItemByID(int id)" type="IItem">
+  Returns the item with the specified ID
+</ParamField>
+
+<ParamField path="getItemByLuceneID(int docID)" type="IItem">
+  Returns the item with the specified Lucene document ID
+</ParamField>
+
+<ParamField path="getLuceneId(int id)" type="int">
+  Converts item ID to Lucene document ID
+</ParamField>
+
+<ParamField path="getId(int luceneId)" type="int">
+  Converts Lucene document ID to item ID
+</ParamField>
+
+### Case Information
+
+<ParamField path="getCaseDir()" type="File">
+  Returns the case directory
+</ParamField>
+
+<ParamField path="getModuleDir()" type="File">
+  Returns the IPED module directory (containing index, data, etc.)
+</ParamField>
+
+<ParamField path="getTotalItems()" type="int">
+  Returns the total number of items in the case
+</ParamField>
+
+<ParamField path="getLastId()" type="int">
+  Returns the highest item ID in the case
+</ParamField>
+
+### Index Access
+
+<ParamField path="getReader()" type="IndexReader">
+  Returns the Lucene IndexReader for low-level index access
+</ParamField>
+
+<ParamField path="getSearcher()" type="IndexSearcher">
+  Returns the Lucene IndexSearcher for executing queries
+</ParamField>
+
+<ParamField path="getAnalyzer()" type="Analyzer">
+  Returns the Lucene Analyzer used for text analysis
+</ParamField>
+
+### Categories and Metadata
+
+<ParamField path="getLeafCategories()" type="List<String>">
+  Returns the list of leaf-level categories in the case
+</ParamField>
+
+<ParamField path="getExtraAttributes()" type="Set<String>">
+  Returns the set of extra attribute names defined in the case
+</ParamField>
+
+<ParamField path="getKeywords()" type="Set<String>">
+  Returns the set of keywords/search terms saved in the case
+</ParamField>
+
+### Example: Case Statistics
+
+```java
+import iped.engine.data.IPEDSource;
+
+File caseDir = new File("/path/to/case");
+IPEDSource source = new IPEDSource(caseDir);
+
+System.out.println("Case: " + source.getCaseDir().getName());
+System.out.println("Total Items: " + source.getTotalItems());
+System.out.println("Highest ID: " + source.getLastId());
+System.out.println("Categories: " + source.getLeafCategories());
+System.out.println("Extra Attributes: " + source.getExtraAttributes());
+
+source.close();
+```
+
+## Best Practices
+
+<Tip>
+  **Always Close Resources**: Use try-with-resources or explicitly call `close()` on `IPEDSource` and `dispose()` on `IItem` instances.
+</Tip>
+
+<Warning>
+  **Thread Safety**: `IItem` objects are not thread-safe. Each processing worker maintains its own item instances.
+</Warning>
+
+<Tip>
+  **Stream Content**: Prefer streaming methods over `getTempFile()` to avoid unnecessary disk I/O and improve performance.
+</Tip>
+
+## See Also
+
+- [Search API](/api/search-api) - Query and filter items
+- [Task API](/api/task-api) - Build custom processing tasks
+- [Web API](/api/web/endpoints) - Remote item access via REST

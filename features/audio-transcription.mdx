@@ -1,0 +1,473 @@
+---
+title: Audio Transcription
+description: Automatic speech-to-text conversion with local and cloud service support
+---
+
+IPED provides automatic audio transcription capabilities with support for multiple speech recognition engines, including local CPU/GPU processing and cloud-based services.
+
+## Overview
+
+Audio transcription enables:
+
+- **Automatic speech-to-text** - Convert audio recordings to searchable text
+- **Multiple implementations** - Choose local or cloud-based processing
+- **Multi-language support** - Process audio in many languages
+- **Indexed results** - Transcriptions added to full-text search index
+- **Quality scoring** - Word-level confidence scores (implementation dependent)
+
+## Available Implementations
+
+IPED supports multiple transcription engines:
+
+### Local Processing
+
+#### Vosk (Default)
+**Best for: Quick setup, CPU-only systems**
+
+```properties
+implementationClass = iped.engine.task.transcript.VoskTranscriptTask
+```
+
+Characteristics:
+- Runs entirely on CPU
+- No external dependencies
+- Included models: English, Portuguese (Brazil)
+- Medium accuracy
+- Fast processing
+
+Models available at: https://alphacephei.com/vosk/models
+
+#### Wav2Vec2
+**Best for: High accuracy with GPU**
+
+```properties
+implementationClass = iped.engine.task.transcript.Wav2Vec2TranscriptTask
+```
+
+Characteristics:
+- GPU highly recommended (10x faster)
+- Better accuracy than Vosk
+- HuggingFace model support
+- Requires additional setup
+
+Setup: [Wav2Vec2 Installation Guide](https://github.com/sepinf-inc/IPED/wiki/User-Manual#wav2vec2)
+
+#### Whisper
+**Best for: Best accuracy, GPU required**
+
+```properties
+implementationClass = iped.engine.task.transcript.WhisperTranscriptTask
+```
+
+Characteristics:
+- Highest accuracy available
+- Multiple model sizes (tiny to large-v3)
+- GPU strongly recommended
+- Multilingual support
+- 4x slower than Wav2Vec2
+
+Setup: [Whisper Installation Guide](https://github.com/sepinf-inc/IPED/wiki/User-Manual#whisper)
+
+#### Remote Service
+**Best for: Distributed processing**
+
+```properties
+implementationClass = iped.engine.task.transcript.RemoteTranscriptionTask
+```
+
+Characteristics:
+- Offload processing to remote server
+- Share GPU resources across nodes
+- Network-based communication
+- Centralized resource management
+
+Setup: [Remote Transcription Guide](https://github.com/sepinf-inc/IPED/wiki/User-Manual#remote-transcription)
+
+### Cloud Services
+
+#### Microsoft Azure
+**Best for: Enterprise deployments, high volume**
+
+```properties
+implementationClass = iped.engine.task.transcript.MicrosoftTranscriptTask
+```
+
+Requirements:
+- Azure subscription and API key
+- Microsoft Speech SDK JAR in plugins folder
+- Pass subscription key: `-XazureSubscriptionKey=XXXXXXXX`
+
+Download SDK:
+```
+https://csspeechstorage.blob.core.windows.net/maven/
+com/microsoft/cognitiveservices/speech/client-sdk/1.19.0/
+client-sdk-1.19.0.jar
+```
+
+#### Google Cloud Speech
+**Best for: Advanced features, multiple languages**
+
+```properties
+implementationClass = iped.engine.task.transcript.GoogleTranscriptTask
+```
+
+Requirements:
+- Google Cloud account and credentials
+- Google Cloud Speech JAR with dependencies
+- Environment variable: `GOOGLE_APPLICATION_CREDENTIALS`
+
+Download SDK:
+```
+https://gitlab.com/iped-project/iped-maven/-/blob/master/
+com/google/cloud/google-cloud-speech/1.22.5-shaded/
+google-cloud-speech-1.22.5-shaded.jar
+```
+
+## Configuration
+
+Audio transcription is configured in `AudioTranscriptConfig.txt`:
+
+```properties
+# Enable audio transcription
+enableAudioTranscription = true
+
+# Language model(s) - 'auto' uses LocalConfig.txt locale
+language = auto
+# Or specify explicitly: language = en; pt-BR
+
+# Audio conversion command
+convertCommand = mplayer -benchmark -vo null -vc null \
+    -srate 16000 -af format=s16le,resample=16000,channels=1 \
+    -ao pcm:fast:file=$OUTPUT $INPUT
+
+# MIME types to process (separate with ;)
+mimesToProcess = audio/3gpp; audio/amr; audio/mp4; \
+    audio/ogg; audio/vnd.wave; audio/x-ms-wma
+
+# Skip known files from hash database
+skipKnownFiles = true
+
+# Timeout configuration
+minTimeout = 180        # Minimum seconds to wait
+timeoutPerSec = 3       # Additional seconds per audio second
+```
+
+## Implementation-Specific Options
+
+### Vosk Configuration
+
+```properties
+# Minimum word confidence score (0.0-1.0)
+# Words below threshold marked with *
+minWordScore = 0.5
+```
+
+### Wav2Vec2 Configuration
+
+```properties
+# HuggingFace model selection
+
+# Portuguese - Small models (~23-24% WER)
+huggingFaceModel = lgris/bp_400h_xlsr2_300M
+# huggingFaceModel = Edresson/wav2vec2-large-xlsr-coraa-portuguese
+
+# Portuguese - Large model (~19% WER, slower, more RAM)
+# huggingFaceModel = jonatasgrosman/wav2vec2-xls-r-1b-portuguese
+
+# Other languages - Small models
+# huggingFaceModel = jonatasgrosman/wav2vec2-large-xlsr-53-english
+# huggingFaceModel = jonatasgrosman/wav2vec2-large-xlsr-53-spanish
+# huggingFaceModel = jonatasgrosman/wav2vec2-large-xlsr-53-french
+```
+
+### Whisper Configuration
+
+```properties
+# Model size: tiny, base, small, medium, large-v3
+whisperModel = medium
+
+# Processing device
+device = cpu              # or 'gpu' with CUDA installed
+
+# Precision (affects accuracy, speed, memory)
+precision = int8          # float32, float16 (GPU), int8 (faster)
+
+# Batch size for parallel processing (GPU with memory)
+batchSize = 1             # Increase to 16+ for GPU speedup
+```
+
+### Remote Service Configuration
+
+```properties
+# Remote server address
+remoteServiceAddress = 192.168.1.100:11111
+```
+
+### Azure Configuration
+
+```properties
+# Azure region (e.g., brazilsouth, eastus, westeurope)
+serviceRegion = brazilsouth
+
+# Maximum parallel requests (subscription dependent)
+maxConcurrentRequests = 100
+```
+
+### Google Cloud Configuration
+
+```properties
+# Rate limiting (milliseconds between requests)
+requestIntervalMillis = 67
+
+# Transcription model
+# Options: default, phone_call, video, latest_short, latest_long
+googleModel = latest_long
+```
+
+## Supported Audio Formats
+
+IPED transcribes common audio formats:
+
+- **3GP/3G2** - Mobile recordings
+- **AAC** - Advanced Audio Coding
+- **AIFF** - Audio Interchange File Format
+- **AMR** - Adaptive Multi-Rate codec (mobile)
+- **MP4 Audio** - MPEG-4 audio tracks
+- **OGG Vorbis/Opus** - Open audio formats
+- **WAV** - Waveform Audio File Format
+- **WMA** - Windows Media Audio
+- **CAF** - Core Audio Format
+- **iLBC** - Internet Low Bitrate Codec
+
+Video audio tracks:
+- Enable video processing by adding video MIME types to `mimesToProcess`
+- Update `convertCommand` to extract audio from video
+
+## Audio Preprocessing
+
+All audio is converted to standard format before transcription:
+
+```bash
+mplayer -benchmark -vo null -vc null \
+    -srate 16000                      # 16 kHz sample rate
+    -af format=s16le                  # 16-bit signed LE
+    -af resample=16000                # Resample to 16k
+    -af channels=1                    # Mono channel
+    -ao pcm:fast:file=$OUTPUT $INPUT
+```
+
+Why 16 kHz mono:
+- Speech recognition optimized for 16 kHz
+- Mono sufficient for speech
+- Reduces processing time
+- Smaller temporary files
+
+## Language Detection
+
+### Auto Mode
+
+```properties
+language = auto
+```
+
+Uses locale from `LocalConfig.txt`:
+- Automatically matches case locale
+- Consistent with UI language
+- No manual configuration needed
+
+### Explicit Languages
+
+Specify one or more languages:
+
+```properties
+language = en           # Single language
+language = en; pt-BR    # Multiple (Azure/Google only)
+```
+
+Supported languages (implementation dependent):
+- English (en, en-US, en-GB)
+- Portuguese (pt, pt-BR, pt-PT)  
+- Spanish (es, es-ES, es-MX)
+- French (fr, fr-FR, fr-CA)
+- German (de, de-DE)
+- Italian (it, it-IT)
+- Russian (ru, ru-RU)
+- Chinese (zh, zh-CN)
+- And many more...
+
+## Processing Flow
+
+```java
+public class AudioTranscriptTask extends AbstractTask {
+    
+    @Override
+    public void init(ConfigurationManager configurationManager) {
+        AudioTranscriptConfig config = 
+            configurationManager.findObject(AudioTranscriptConfig.class);
+        
+        // Load implementation class dynamically
+        impl = (AbstractTranscriptTask) Class
+            .forName(config.getClassName())
+            .getDeclaredConstructor()
+            .newInstance();
+        
+        impl.init(configurationManager);
+    }
+    
+    @Override
+    protected void process(IItem evidence) {
+        impl.process(evidence);
+    }
+}
+```
+
+### Per-Item Processing
+
+1. **Filter items** - Check MIME type and known status
+2. **Convert audio** - Standardize to 16kHz mono WAV
+3. **Transcribe** - Send to selected implementation
+4. **Store results** - Add to item extra attributes
+5. **Index text** - Make searchable in Lucene index
+
+## Transcription Results
+
+Transcription stored as item attributes:
+
+```java
+// Get transcribed text
+String transcript = item.getExtraAttribute("transcript");
+
+// Word-level confidence (Vosk)
+List<WordScore> words = item.getExtraAttribute("transcriptWords");
+```
+
+Results indexed for:
+- Full-text search
+- Keyword highlighting
+- Export in reports
+- Timeline correlation
+
+## Performance Comparison
+
+| Implementation | Speed (CPU) | Speed (GPU) | Accuracy | Setup |
+|----------------|-------------|-------------|----------|-------|
+| Vosk           | Fast        | N/A         | Medium   | Easy  |
+| Wav2Vec2       | Slow        | Fast        | High     | Medium|
+| Whisper        | Very Slow   | Medium      | Highest  | Medium|
+| Azure          | Fast        | N/A         | High     | Easy  |
+| Google         | Fast        | N/A         | High     | Easy  |
+| Remote         | Depends on server | -     | Varies   | Hard  |
+
+## Use Cases
+
+### Call Recording Analysis
+- Transcribe intercepted phone calls
+- Search for keywords and phrases
+- Identify speakers and topics
+- Generate call summaries
+
+### Voice Message Processing
+- WhatsApp/Telegram voice messages
+- Social media audio posts
+- Voicemail recordings
+
+### Interview Transcription
+- Police interviews
+- Witness statements  
+- Suspect interrogations
+- Expert depositions
+
+### OSINT Audio
+- Podcast monitoring
+- Social media audio
+- Public speeches
+- News broadcasts
+
+## Quality Optimization
+
+### Improve Accuracy
+
+1. **Use appropriate model** - Match audio characteristics
+   - `phone_call` for telephone recordings
+   - `video` for video audio tracks
+   - `latest_long` for long-form content
+
+2. **Select correct language** - Wrong language = poor results
+
+3. **Use better implementation**
+   - Vosk → Wav2Vec2 → Whisper (increasing accuracy)
+
+4. **Audio quality matters**
+   - Clear audio = better transcription
+   - Reduce background noise
+   - Avoid multiple speakers talking simultaneously
+
+### Improve Speed
+
+1. **Use GPU** - 10-20x speedup for Wav2Vec2/Whisper
+
+2. **Batch processing** - Increase Whisper batchSize on GPU
+
+3. **Faster models** - Whisper tiny/base vs. large
+
+4. **Distributed processing** - Remote service on multiple servers
+
+5. **Filter scope** - Use `skipKnownFiles` and `mimesToProcess`
+
+## Troubleshooting
+
+### No Transcription Generated
+
+- Verify audio format in `mimesToProcess`
+- Check audio file is not corrupted
+- Review conversion command works
+- Confirm implementation properly initialized
+
+### Low Accuracy
+
+- Verify correct language selected
+- Check audio quality (noise, clarity)
+- Try better implementation (Whisper)
+- Review speaker clarity and accent
+
+### Performance Issues
+
+- Reduce concurrent processes
+- Use GPU for Wav2Vec2/Whisper
+- Try faster model (Whisper base vs. large)
+- Enable `skipKnownFiles`
+
+### Memory Errors
+
+- Reduce Whisper batchSize
+- Use int8 precision instead of float32
+- Process fewer files concurrently
+- Use smaller Whisper model
+
+## Security Considerations
+
+### Cloud Services
+
+- Audio uploaded to third-party servers
+- Review legal/privacy requirements
+- Consider data sovereignty laws
+- Use encryption in transit
+- Clear audit trails
+
+### Local Processing
+
+- All data stays on premises
+- No external network calls
+- Suitable for classified material
+- Full control over data
+
+### Credential Management
+
+Service addresses cleared from exported cases:
+
+```java
+public void clearTranscriptionServiceAddress(File moduleOutput) {
+    // Remove remoteServiceAddress from config
+    // Prevents leaking internal network topology
+}
+```

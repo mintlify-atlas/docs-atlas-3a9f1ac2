@@ -1,0 +1,583 @@
+---
+title: Custom Processing Tasks
+description: Extend IPED by creating custom Java-based processing tasks
+---
+
+IPED's processing pipeline is built on a task-based architecture. Each task processes items sequentially, and you can create custom tasks by extending the `AbstractTask` class.
+
+## Task Architecture
+
+### Processing Pipeline
+
+Tasks are executed in a specific order defined in `TaskInstaller.xml`. Each item flows through the pipeline:
+
+```mermaid
+graph LR
+    A[Item] --> B[HashTask]
+    B --> C[SignatureTask]
+    C --> D[SetCategoryTask]
+    D --> E[ParsingTask]
+    E --> F[IndexTask]
+    F --> G[Your Custom Task]
+```
+
+### Multi-threaded Execution
+
+IPED creates multiple worker threads, and each worker has its own instance of each task:
+
+- Each task instance processes items independently
+- Shared data must use thread-safe objects in `caseData.objectMap`
+- Processing order is important - some tasks depend on results from previous tasks
+
+## Creating a Custom Task
+
+### Basic Structure
+
+Extend `AbstractTask` and implement the required methods:
+
+```java MyCustomTask.java
+package com.example.iped.task;
+
+import java.util.Collections;
+import java.util.List;
+
+import iped.configuration.Configurable;
+import iped.data.IItem;
+import iped.engine.config.ConfigurationManager;
+import iped.engine.task.AbstractTask;
+
+public class MyCustomTask extends AbstractTask {
+    
+    @Override
+    public List<Configurable<?>> getConfigurables() {
+        // Return configuration objects, or empty list
+        return Collections.emptyList();
+    }
+    
+    @Override
+    public void init(ConfigurationManager configurationManager) throws Exception {
+        // Initialize task: load config, models, resources
+        // Called once per worker thread when processing starts
+    }
+    
+    @Override
+    protected void process(IItem evidence) throws Exception {
+        // Process each item
+        // This is called for every item in the case
+        String name = evidence.getName();
+        String ext = evidence.getExt();
+        Long size = evidence.getLength();
+        
+        // Do custom processing
+        if (ext != null && ext.equalsIgnoreCase("exe")) {
+            evidence.setExtraAttribute("isExecutable", true);
+        }
+    }
+    
+    @Override
+    public void finish() throws Exception {
+        // Cleanup: release resources, save results
+        // Called once per worker thread when processing completes
+    }
+}
+```
+
+### AbstractTask Class Reference
+
+The `AbstractTask` class provides these key members:
+
+```java
+package iped.engine.task;
+
+public abstract class AbstractTask {
+    
+    // Worker executing this task
+    protected Worker worker;
+    
+    // Statistics tracker
+    protected Statistics stats;
+    
+    // Output directory for processing
+    protected File output;
+    
+    // Case data (for shared objects)
+    protected CaseData caseData;
+    
+    // Next task in pipeline
+    protected AbstractTask nextTask;
+    
+    // Required methods to implement
+    public abstract List<Configurable<?>> getConfigurables();
+    public abstract void init(ConfigurationManager configurationManager) throws Exception;
+    protected abstract void process(IItem evidence) throws Exception;
+    public abstract void finish() throws Exception;
+    
+    // Optional methods to override
+    public boolean isEnabled() {
+        return true;
+    }
+    
+    protected boolean processIgnoredItem() {
+        return false;  // Don't process items marked as ignored
+    }
+    
+    protected boolean processQueueEnd() {
+        return false;  // Don't process queue-end markers
+    }
+    
+    public void interrupted() {
+        // Handle processing interruption
+    }
+}
+```
+
+## Real-World Example: Hash Task
+
+Let's examine a simplified version of IPED's `HashTask`:
+
+```java HashTask.java
+package iped.engine.task;
+
+import java.io.InputStream;
+import java.security.MessageDigest;
+import java.util.Arrays;
+import java.util.List;
+
+import iped.configuration.Configurable;
+import iped.data.IItem;
+import iped.engine.config.ConfigurationManager;
+import iped.engine.config.HashTaskConfig;
+
+public class HashTask extends AbstractTask {
+    
+    private HashTaskConfig config;
+    private boolean computeMD5;
+    private boolean computeSHA1;
+    private boolean computeSHA256;
+    
+    @Override
+    public List<Configurable<?>> getConfigurables() {
+        return Arrays.asList(new HashTaskConfig());
+    }
+    
+    @Override
+    public void init(ConfigurationManager configurationManager) throws Exception {
+        // Load configuration
+        config = configurationManager.findObject(HashTaskConfig.class);
+        computeMD5 = config.isEnabled("enableMD5");
+        computeSHA1 = config.isEnabled("enableSHA1");
+        computeSHA256 = config.isEnabled("enableSHA256");
+    }
+    
+    @Override
+    protected void process(IItem evidence) throws Exception {
+        // Skip if already has hash
+        if (evidence.getHash() != null) {
+            return;
+        }
+        
+        // Skip if no content
+        if (evidence.getLength() == null || evidence.getLength() == 0) {
+            return;
+        }
+        
+        // Compute hashes
+        MessageDigest md5 = computeMD5 ? MessageDigest.getInstance("MD5") : null;
+        MessageDigest sha1 = computeSHA1 ? MessageDigest.getInstance("SHA-1") : null;
+        MessageDigest sha256 = computeSHA256 ? MessageDigest.getInstance("SHA-256") : null;
+        
+        try (InputStream is = evidence.getBufferedInputStream()) {
+            byte[] buffer = new byte[8192];
+            int len;
+            while ((len = is.read(buffer)) != -1) {
+                if (md5 != null) md5.update(buffer, 0, len);
+                if (sha1 != null) sha1.update(buffer, 0, len);
+                if (sha256 != null) sha256.update(buffer, 0, len);
+            }
+        }
+        
+        // Set hash values
+        if (sha1 != null) {
+            String hash = toHex(sha1.digest());
+            evidence.setHash(hash);
+        }
+        if (md5 != null) {
+            String hash = toHex(md5.digest());
+            evidence.setExtraAttribute("md5", hash);
+        }
+        if (sha256 != null) {
+            String hash = toHex(sha256.digest());
+            evidence.setExtraAttribute("sha256", hash);
+        }
+        
+        // Update statistics
+        stats.incHashed();
+    }
+    
+    @Override
+    public void finish() throws Exception {
+        // Nothing to cleanup
+    }
+    
+    private String toHex(byte[] bytes) {
+        StringBuilder sb = new StringBuilder();
+        for (byte b : bytes) {
+            sb.append(String.format("%02x", b));
+        }
+        return sb.toString();
+    }
+}
+```
+
+## Configuration Support
+
+Tasks can have custom configuration files:
+
+<Steps>
+
+<Step title="Create Configuration Class">
+```java HashTaskConfig.java
+package iped.engine.config;
+
+import iped.configuration.Configurable;
+import java.io.IOException;
+import java.nio.file.Path;
+
+public class HashTaskConfig extends AbstractTaskPropertiesConfig {
+    
+    private static final long serialVersionUID = 1L;
+    
+    @Override
+    public String getTaskEnableProperty() {
+        return "enableHashTask";
+    }
+    
+    @Override
+    public String getTaskConfigFileName() {
+        return "HashTaskConfig.txt";
+    }
+    
+    public boolean isEnabled(String property) {
+        String value = getConfiguration().getProperty(property);
+        return "true".equalsIgnoreCase(value);
+    }
+}
+```
+</Step>
+
+<Step title="Create Configuration File">
+```properties HashTaskConfig.txt
+# Hash computation options
+enableHashTask = true
+enableMD5 = true
+enableSHA1 = true
+enableSHA256 = false
+enableSHA512 = false
+```
+</Step>
+
+<Step title="Load in Task">
+```java
+@Override
+public void init(ConfigurationManager configurationManager) throws Exception {
+    config = configurationManager.findObject(HashTaskConfig.class);
+    computeMD5 = config.isEnabled("enableMD5");
+}
+```
+</Step>
+
+</Steps>
+
+## Accessing Item Properties
+
+### IItem Interface
+
+The `IItem` interface provides access to all item properties:
+
+```java
+// Basic properties
+String name = item.getName();
+String ext = item.getExt();
+String path = item.getPath();
+String hash = item.getHash();
+Long length = item.getLength();
+MediaType mediaType = item.getMediaType();
+
+// Dates (may be null)
+Date modDate = item.getModDate();
+Date createDate = item.getCreationDate();
+Date accessDate = item.getAccessDate();
+
+// Boolean flags
+boolean isDeleted = item.isDeleted();
+boolean isDir = item.isDir();
+boolean isRoot = item.isRoot();
+boolean isCarved = item.isCarved();
+boolean isSubItem = item.isSubItem();
+boolean hasChildren = item.hasChildren();
+
+// Content access
+File tempFile = item.getTempFile();
+BufferedInputStream stream = item.getBufferedInputStream();
+TikaInputStream tikaStream = item.getTikaStream();
+SeekableInputStream seekStream = item.getSeekableInputStream();
+
+// Metadata
+Metadata metadata = item.getMetadata();
+String value = metadata.get("property-name");
+
+// Extracted text (if ParsingTask already ran)
+String text = item.getParsedTextCache();
+
+// Custom attributes
+Object value = item.getExtraAttribute("key");
+
+// Categories
+Set<String> categories = item.getCategorySet();
+String categoriesStr = item.getCategories();  // Pipe-separated
+```
+
+### Modifying Items
+
+```java
+// Set to ignore (exclude from processing and case)
+item.setToIgnore(true);
+
+// Control if added to case
+item.setAddToCase(false);
+
+// Modify categories
+item.addCategory("Suspicious");
+item.removeCategory("Documents");
+item.setCategory("Malware");  // Replace all categories
+
+// Set media type
+item.setMediaTypeStr("application/x-custom");
+
+// Set custom attributes
+item.setExtraAttribute("score", 95.5);
+item.setExtraAttribute("flagged", true);
+
+// Override extracted text
+item.setParsedTextCache("Custom text content");
+
+// Set hash
+item.setHash("abc123...");
+```
+
+## Sharing Data Between Threads
+
+### Using CaseData
+
+Share objects across all task instances:
+
+```java
+@Override
+public void init(ConfigurationManager configurationManager) throws Exception {
+    // Check if shared object exists
+    MyModel model = (MyModel) caseData.getCaseObject("my_model");
+    
+    if (model == null) {
+        // First thread creates and shares it
+        model = loadModel();
+        caseData.putCaseObject("my_model", model);
+    }
+    
+    // Use shared model
+    this.model = model;
+}
+```
+
+### Thread-Safe Collections
+
+Use Java concurrent collections:
+
+```java
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
+
+@Override
+public void init(ConfigurationManager configurationManager) throws Exception {
+    ConcurrentHashMap<String, Integer> cache = 
+        (ConcurrentHashMap<String, Integer>) caseData.getCaseObject("cache");
+    
+    if (cache == null) {
+        cache = new ConcurrentHashMap<>();
+        caseData.putCaseObject("cache", cache);
+    }
+    
+    this.cache = cache;
+}
+
+@Override
+protected void process(IItem evidence) throws Exception {
+    // Thread-safe access
+    Integer count = cache.getOrDefault(evidence.getExt(), 0);
+    cache.put(evidence.getExt(), count + 1);
+}
+```
+
+## Processing Subitems
+
+Tasks can create new items (e.g., carved files):
+
+```java
+@Override
+protected void process(IItem evidence) throws Exception {
+    // Create subitem
+    IItem subitem = evidence.createChildItem();
+    subitem.setName("carved_" + System.currentTimeMillis());
+    subitem.setMediaTypeStr("image/jpeg");
+    subitem.setLength(1024L);
+    
+    // Set content
+    byte[] data = extractData(evidence);
+    subitem.setTempFile(saveTempFile(data));
+    
+    // Add to processing queue
+    worker.processNewItem(subitem);
+}
+```
+
+## Checking Dependencies
+
+Ensure required tasks are enabled:
+
+```java
+@Override
+public void init(ConfigurationManager configurationManager) throws Exception {
+    // Verify ParsingTask is enabled
+    checkDependency(ParsingTask.class);
+    
+    // Verify HashTask is enabled
+    checkDependency(HashTask.class);
+}
+```
+
+## Installing Your Task
+
+<Steps>
+
+<Step title="Build JAR">
+Compile your task and package as JAR:
+
+```bash
+mvn clean package
+```
+</Step>
+
+<Step title="Install Plugin">
+Copy JAR to IPED plugins directory:
+
+```bash
+cp target/my-task.jar iped-app/plugins/
+```
+</Step>
+
+<Step title="Register in TaskInstaller.xml">
+```xml
+<tasks>
+    <!-- Existing tasks -->
+    <task class="iped.engine.task.HashTask"></task>
+    <task class="iped.engine.task.ParsingTask"></task>
+    
+    <!-- Your custom task -->
+    <task class="com.example.iped.task.MyCustomTask"></task>
+    
+    <!-- Tasks that depend on your task -->
+    <task class="iped.engine.task.IndexTask"></task>
+</tasks>
+```
+</Step>
+
+</Steps>
+
+## Best Practices
+
+<AccordionGroup>
+
+<Accordion title="Task Ordering">
+Place your task at the right point in the pipeline:
+- **Before ParsingTask**: If you need raw file content
+- **After ParsingTask**: If you need extracted text
+- **After CategoryTask**: If you need file categories
+- **Before IndexTask**: To ensure attributes are indexed
+</Accordion>
+
+<Accordion title="Performance">
+- Cache expensive computations using hash values
+- Use `item.getLength()` to skip empty files
+- Check `item.isDir()` to skip directories
+- Use `processIgnoredItem()` = false to skip ignored files
+- Release resources in `finish()` method
+</Accordion>
+
+<Accordion title="Error Handling">
+- Catch exceptions to prevent stopping entire pipeline
+- Log errors with `LOGGER.error()`
+- Set error attributes: `item.setExtraAttribute("error", message)`
+- Update statistics: `stats.incErrors()`
+</Accordion>
+
+<Accordion title="Testing">
+- Test with small dataset first
+- Check TaskInstaller.xml order carefully
+- Verify shared objects are thread-safe
+- Test with multiple worker threads
+- Monitor memory usage with large batches
+</Accordion>
+
+</AccordionGroup>
+
+## Task Execution Control
+
+### Enable/Disable Tasks
+
+```java
+@Override
+public boolean isEnabled() {
+    // Check configuration or other conditions
+    return config != null && config.isTaskEnabled();
+}
+```
+
+### Process Ignored Items
+
+```java
+@Override
+protected boolean processIgnoredItem() {
+    // Return true to process items marked as ignored
+    return true;
+}
+```
+
+### Process Queue-End Markers
+
+```java
+@Override
+protected boolean processQueueEnd() {
+    // Return true to get notified when queue ends
+    return true;
+}
+
+@Override
+protected void process(IItem evidence) throws Exception {
+    if (evidence.isQueueEnd()) {
+        // Flush batch, save results, etc.
+        processBatch();
+        return;
+    }
+    // Normal processing
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Scripting" icon="scroll" href="/advanced/scripting">
+    Create tasks with JavaScript or Python
+  </Card>
+  <Card title="Web API" icon="cloud" href="/advanced/web-api">
+    Access processed cases remotely
+  </Card>
+</CardGroup>

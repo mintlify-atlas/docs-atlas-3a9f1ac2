@@ -1,0 +1,705 @@
+---
+title: "Configuration"
+description: "Configure IPED processing options, modules, and advanced settings"
+---
+
+IPED's behavior is controlled through a comprehensive configuration system that allows fine-tuned control over processing, analysis, and export options.
+
+## Configuration Overview
+
+IPED uses a hierarchical configuration system with multiple configuration files:
+
+<CardGroup cols={2}>
+  <Card title="IPEDConfig.txt" icon="sliders">
+    Main configuration file controlling enabled features and processing options
+  </Card>
+  
+  <Card title="LocalConfig.txt" icon="computer">
+    Local system settings like CPU threads, memory, and temporary folders
+  </Card>
+  
+  <Card title="Module Configs" icon="puzzle-piece">
+    Individual configuration files for specific processing modules
+  </Card>
+  
+  <Card title="Profiles" icon="layer-group">
+    Pre-configured sets of options for different investigation types
+  </Card>
+</CardGroup>
+
+## Configuration Locations
+
+IPED looks for configuration files in this order:
+
+<Steps>
+  <Step title="Profile directory (if specified)">
+    ```
+    iped-app/resources/config/profiles/<profile_name>/
+    ```
+  </Step>
+  
+  <Step title="Default configuration directory">
+    ```
+    iped-app/resources/config/
+    ```
+  </Step>
+  
+  <Step title="Case directory (for existing cases)">
+    ```
+    /cases/case001/iped/config/
+    ```
+  </Step>
+</Steps>
+
+<Note>
+  Profile settings override default settings. Case settings are stored but don't override new processing.
+</Note>
+
+## Main Configuration (IPEDConfig.txt)
+
+The primary configuration file controls which processing features are enabled.
+
+### File Location
+
+```
+iped-app/resources/config/IPEDConfig.txt
+```
+
+Or within a profile:
+```
+iped-app/resources/config/profiles/<profile>/IPEDConfig.txt
+```
+
+### Configuration Format
+
+Configuration files use a simple key-value format:
+
+```text IPEDConfig.txt
+# Comments start with #
+enableSomeFeature = true
+disableSomeFeature = false
+numericOption = 100
+stringOption = value
+```
+
+### Core Processing Options
+
+<ParamField path="enableHash" type="boolean" default="true">
+  Compute file hashes (MD5, SHA-1, SHA-256, SHA-512, edonkey)
+</ParamField>
+
+<ParamField path="enablePhotoDNA" type="boolean" default="false">
+  Enable PhotoDNA hashing (law enforcement only)
+</ParamField>
+
+<ParamField path="enableHashDBLookup" type="boolean" default="true">
+  Lookup hashes in configured databases (NSRL, CAID, ProjectVIC, etc.)
+</ParamField>
+
+<ParamField path="enablePhotoDNALookup" type="boolean" default="false">
+  Lookup PhotoDNA hashes in configured databases
+</ParamField>
+
+<ParamField path="processFileSignatures" type="boolean" default="true">
+  Verify file types using signature analysis (magic bytes)
+</ParamField>
+
+<ParamField path="enableFileParsing" type="boolean" default="true">
+  Parse files to extract metadata and embedded content
+</ParamField>
+
+<ParamField path="expandContainers" type="boolean" default="true">
+  Recursively expand archives, compressed files, and containers
+</ParamField>
+
+<ParamField path="processEmbeddedDisks" type="boolean" default="true">
+  Process embedded disk images (E01, VMDK, VHD, etc. found within evidence)
+</ParamField>
+
+### Search and Indexing
+
+<ParamField path="indexFileContents" type="boolean" default="true">
+  Index file contents for full-text search
+</ParamField>
+
+<ParamField path="enableRegexSearch" type="boolean" default="true">
+  Search for patterns: credit cards, emails, URLs, phone numbers, etc.
+</ParamField>
+
+<ParamField path="enableLanguageDetect" type="boolean" default="true">
+  Detect document languages (70+ languages supported)
+</ParamField>
+
+<ParamField path="enableNamedEntityRecogniton" type="boolean" default="false">
+  Detect named entities (people, organizations, locations) - requires Stanford CoreNLP models
+</ParamField>
+
+### Image and Video Analysis
+
+<ParamField path="enableImageThumbs" type="boolean" default="true">
+  Generate thumbnails for images (hundreds of formats)
+</ParamField>
+
+<ParamField path="enableVideoThumbs" type="boolean" default="true">
+  Generate thumbnails for video files
+</ParamField>
+
+<ParamField path="enableDocThumbs" type="boolean" default="true">
+  Generate thumbnails for documents (PDF, Office, etc.)
+</ParamField>
+
+<ParamField path="enableImageSimilarity" type="boolean" default="true">
+  Enable similar image search functionality
+</ParamField>
+
+<ParamField path="enableFaceRecognition" type="boolean" default="false">
+  Detect and recognize faces in images (CPU-optimized)
+</ParamField>
+
+<ParamField path="enableAgeEstimation" type="boolean" default="false">
+  Estimate ages of individuals in images
+</ParamField>
+
+<ParamField path="enableYahooNSFWDetection" type="boolean" default="false">
+  Use Yahoo open-nsfw deep learning model for nudity detection (requires Keras and TensorFlow)
+</ParamField>
+
+### Data Recovery
+
+<ParamField path="enableCarving" type="boolean" default="true">
+  Carve deleted files from unallocated space (40+ file formats)
+</ParamField>
+
+<ParamField path="enableLedCarving" type="boolean" default="false">
+  Enhanced carving for known exploitative content (CSAM investigations)
+</ParamField>
+
+<ParamField path="enableKnownMetCarving" type="boolean" default="false">
+  Carve files matching known metadata signatures
+</ParamField>
+
+### Advanced Features
+
+<ParamField path="enableQRCode" type="boolean" default="true">
+  Scan for and decode QR codes in images
+</ParamField>
+
+<ParamField path="enableGraphGeneration" type="boolean" default="true">
+  Generate communication graphs (calls, emails, messages)
+</ParamField>
+
+<ParamField path="enableAudioTranscription" type="boolean" default="false">
+  Transcribe audio files (local or cloud services: Azure, Google Cloud)
+</ParamField>
+
+<ParamField path="entropyTest" type="boolean" default="true">
+  Detect encrypted files using entropy analysis
+</ParamField>
+
+<ParamField path="enableSearchHardwareWallets" type="boolean" default="true">
+  Search for cryptocurrency hardware wallet files
+</ParamField>
+
+### Export and Reporting
+
+<ParamField path="exportFileProps" type="boolean" default="true">
+  Export file properties to reports
+</ParamField>
+
+<ParamField path="enableAutomaticExportFiles" type="boolean" default="false">
+  Automatically export files matching configured criteria
+</ParamField>
+
+<ParamField path="enableHTMLReport" type="boolean" default="true">
+  Generate HTML reports of case data
+</ParamField>
+
+<ParamField path="ignoreDuplicates" type="boolean" default="true">
+  Skip processing of duplicate files (based on hash)
+</ParamField>
+
+### Example Configuration
+
+```text IPEDConfig.txt
+########################################################################
+# IPED Processing Configuration
+########################################################################
+
+# Hashing
+enableHash = true
+enablePhotoDNA = false
+enableHashDBLookup = true
+
+# File Processing
+processFileSignatures = true
+enableFileParsing = true
+expandContainers = true
+processEmbeddedDisks = true
+
+# Indexing and Search
+indexFileContents = true
+enableRegexSearch = true
+enableLanguageDetect = true
+enableNamedEntityRecogniton = false
+
+# Image/Video Analysis
+enableImageThumbs = true
+enableVideoThumbs = true
+enableImageSimilarity = true
+enableFaceRecognition = false
+
+# Data Recovery
+enableCarving = true
+enableLedCarving = false
+
+# Advanced
+enableQRCode = true
+enableGraphGeneration = true
+entropyTest = true
+
+# Export
+exportFileProps = true
+enableHTMLReport = true
+ignoreDuplicates = true
+```
+
+## Local Configuration (LocalConfig.txt)
+
+Controls system-specific settings and resource allocation.
+
+### File Location
+
+```
+iped-app/resources/config/LocalConfig.txt
+```
+
+### Performance Settings
+
+<ParamField path="numThreads" type="integer" default="auto">
+  Number of processing threads. Set to number of CPU cores or leave blank for auto-detection.
+</ParamField>
+
+<ParamField path="indexerThreads" type="integer" default="1">
+  Number of threads for text indexing. Usually 1 is optimal.
+</ParamField>
+
+<ParamField path="queueSize" type="integer" default="10000">
+  Size of processing queue. Increase for systems with more RAM.
+</ParamField>
+
+### Storage Settings
+
+<ParamField path="indexTemp" type="path">
+  Temporary folder for index creation. Use fast SSD storage.
+</ParamField>
+
+<ParamField path="outputOnSSD" type="boolean" default="true">
+  Optimize for SSD output storage
+</ParamField>
+
+<ParamField path="embutidos" type="path">
+  Temporary folder for extracted embedded files
+</ParamField>
+
+### Example Configuration
+
+```text LocalConfig.txt
+########################################################################
+# Local System Configuration
+########################################################################
+
+# Processing threads (leave empty for auto-detection)
+numThreads = 16
+indexerThreads = 1
+
+# Queue size (higher = more RAM usage)
+queueSize = 10000
+
+# Temporary folders (use fast storage)
+indexTemp = /tmp/iped-index
+embutidos = /tmp/iped-extracted
+
+# Storage optimization
+outputOnSSD = true
+```
+
+## Module Configuration
+
+Individual modules have dedicated configuration files in the `conf/` subdirectory.
+
+### Common Module Configs
+
+<Tabs>
+  <Tab title="IndexTaskConfig.txt">
+    Controls text indexing and search behavior.
+    
+    ```text conf/IndexTaskConfig.txt
+    # Index configuration
+    convertCharsToLowerCase = true
+    convertCharsToAscii = false
+    filterNonLatinChars = false
+    
+    # Minimum index fragment size
+    minWordSize = 3
+    
+    # Store term vectors for highlighting
+    storeTermVectors = true
+    
+    # Content types to skip
+    skipKnownFiles = true
+    ```
+  </Tab>
+  
+  <Tab title="HashTaskConfig.txt">
+    Configure hash computation algorithms.
+    
+    ```text conf/HashTaskConfig.txt
+    # Hash algorithms to compute
+enableMD5 = true
+    enableSHA1 = true
+    enableSHA256 = true
+    enableSHA512 = false
+    enableEdonkey = true
+    ```
+  </Tab>
+  
+  <Tab title="HashDBLookupConfig.txt">
+    Configure hash database lookups.
+    
+    ```text conf/HashDBLookupConfig.txt
+    # Hash databases to use
+    enableNSRL = true
+    enableCAID = true
+    enableProjectVIC = false
+    
+    # Database paths
+    nsrlPath = /hashsets/NSRL/
+    caidPath = /hashsets/CAID/
+    ```
+  </Tab>
+  
+  <Tab title="CarvedTaskConfig.txt">
+    Configure data carving options.
+    
+    ```text conf/CarvedTaskConfig.txt
+    # Enable carving by category
+    carveImages = true
+    carveVideos = true
+    carveDocuments = true
+    carveArchives = false
+    
+    # Minimum file size to carve (bytes)
+    minFileSize = 1024
+    
+    # Carving sensitivity
+    maxFragmentation = 3
+    ```
+  </Tab>
+  
+  <Tab title="VideoThumbsConfig.txt">
+    Configure video thumbnail generation.
+    
+    ```text conf/VideoThumbsConfig.txt
+    # Number of frames to extract per video
+    numFrames = 10
+    
+    # Thumbnail dimensions
+    thumbWidth = 200
+    thumbHeight = 200
+    
+    # Gallery layout
+    galleryColumns = 5
+    
+    # Skip known videos
+    skipKnownVideos = true
+    ```
+  </Tab>
+  
+  <Tab title="ParsingTaskConfig.txt">
+    Configure file parsing options.
+    
+    ```text conf/ParsingTaskConfig.txt
+    # Parse embedded metadata
+    parseMetadata = true
+    
+    # Extract embedded files
+    extractEmbedded = true
+    
+    # OCR images in PDFs
+    pdfOCR = false
+    
+    # Parse corrupted files
+    parseCorrupted = true
+    
+    # Timeout per file (seconds)
+    parsingTimeout = 60
+    ```
+  </Tab>
+</Tabs>
+
+## Category Configuration
+
+Configure which file categories to process, expand, or export.
+
+### CategoriesToExpand.txt
+
+Specify which container types to automatically expand:
+
+```text conf/CategoriesToExpand.txt
+# Expand these categories
+Archives
+Compressed
+Email
+Instant Messengers
+Databases
+```
+
+### CategoriesToExport.txt
+
+Define which categories to automatically export (blind profile):
+
+```text conf/CategoriesToExport.txt
+# Automatically export these categories
+Documents
+Spreadsheets
+Presentations
+Images
+```
+
+### FileSystemConfig.txt
+
+Configure file system processing options:
+
+```text conf/FileSystemConfig.txt
+# Process deleted files
+processDeleted = true
+
+# Process unallocated space
+processUnallocated = true
+
+# Process file slack
+processSlack = false
+
+# Minimum file size to process
+minFileSize = 0
+```
+
+## Advanced Configuration
+
+### Regular Expression Searches
+
+Configure pattern searches in `conf/RegexConfig.txt`:
+
+```text conf/RegexConfig.txt
+# Built-in patterns (enabled by default)
+enableCreditCards = true
+enableEmails = true
+enableURLs = true
+enablePhoneNumbers = true
+enableIPAddresses = true
+enableBitcoinWallets = true
+enableEthereumWallets = true
+
+# Validation scripts
+validateCards = true
+validateIBANs = true
+
+# Custom patterns
+customPattern1 = CASE-\d{4}-\d{6}
+customPattern2 = EVIDENCE-[A-Z]{3}-\d{8}
+```
+
+### Named Entity Recognition
+
+Configure NER in `conf/NERConfig.txt`:
+
+```text conf/NERConfig.txt
+# Requires Stanford CoreNLP models
+enablePersonNames = true
+enableOrganizations = true
+enableLocations = true
+enableDates = true
+
+# Model path
+modelPath = /models/stanford-corenlp/
+
+# Languages
+languages = en,es,fr,de
+```
+
+### Audio Transcription
+
+Configure transcription in `conf/AudioTranscriptionConfig.txt`:
+
+```text conf/AudioTranscriptionConfig.txt
+# Service provider
+provider = azure  # Options: azure, google, local
+
+# Azure settings
+azureKey = YOUR_API_KEY
+azureRegion = eastus
+
+# Languages to detect
+languages = en-US,es-ES,pt-BR
+
+# Skip known audio
+skipKnownAudio = true
+```
+
+## Configuration Best Practices
+
+<AccordionGroup>
+  <Accordion title="Start with a profile">
+    Don't configure from scratch. Start with the profile closest to your needs and modify it:
+    
+    ```bash Terminal
+    cd iped-app/resources/config/profiles
+    cp -r forensic my_custom_profile
+    # Edit my_custom_profile/IPEDConfig.txt
+    ```
+  </Accordion>
+  
+  <Accordion title="Test configuration changes">
+    Test configuration changes on sample data before processing critical evidence:
+    
+    ```bash Terminal
+    java -jar iped.jar -d /test/sample.E01 -profile my_custom_profile -o /test/output
+    ```
+  </Accordion>
+  
+  <Accordion title="Document custom configurations">
+    Keep notes on why specific options were enabled/disabled for court testimony and peer review.
+  </Accordion>
+  
+  <Accordion title="Use version control">
+    Store custom profiles in version control (git) to track changes over time:
+    
+    ```bash Terminal
+    cd iped-app/resources/config/profiles
+    git init
+    git add my_custom_profile/
+    git commit -m "Custom profile for corporate investigations"
+    ```
+  </Accordion>
+  
+  <Accordion title="Balance features and performance">
+    More features = slower processing. Enable only what you need for each investigation.
+  </Accordion>
+</AccordionGroup>
+
+## Configuration Troubleshooting
+
+<Steps>
+  <Step title="Check configuration syntax">
+    Ensure proper format: `key = value` with no extra spaces:
+    ```text
+    enableHash = true  # Correct
+    enableHash=true    # Also correct
+    enableHash = true; # WRONG - no semicolons
+    ```
+  </Step>
+  
+  <Step title="Verify file locations">
+    IPED must be able to find configuration files. Check the log for:
+    ```
+    Loading configuration from: /path/to/config
+    ```
+  </Step>
+  
+  <Step title="Check profile override">
+    Profile settings override defaults. If changes aren't applied, check if you're using a profile:
+    ```bash Terminal
+    # This uses forensic profile settings, NOT default config
+    java -jar iped.jar -profile forensic -d /evidence/disk.E01 -o /cases/case001
+    ```
+  </Step>
+  
+  <Step title="Review log file">
+    Check the log for configuration errors:
+    ```bash Terminal
+    tail -f /cases/case001/iped/log/IPED_YYYYMMDD.log
+    ```
+  </Step>
+</Steps>
+
+## Environment Variables
+
+Some settings can be controlled via environment variables:
+
+<CodeGroup>
+```bash Linux/Mac
+export IPED_TEMP=/fast/ssd/temp
+export JAVA_TOOL_OPTIONS="-Xmx32G"
+java -jar iped.jar -d /evidence/disk.E01 -o /cases/case001
+```
+
+```batch Windows
+set IPED_TEMP=D:\temp
+set JAVA_TOOL_OPTIONS=-Xmx32G
+java -jar iped.jar -d E:\evidence\disk.E01 -o D:\cases\case001
+```
+</CodeGroup>
+
+## Configuration Examples
+
+### Fast Corporate Investigation
+
+```text custom_corporate/IPEDConfig.txt
+# Fast processing for corporate investigations
+enableHash = true
+enableHashDBLookup = true
+processFileSignatures = true
+enableFileParsing = true
+expandContainers = true
+indexFileContents = true
+enableRegexSearch = true
+
+# Skip time-consuming features
+enableCarving = false
+enableImageSimilarity = false
+enableFaceRecognition = false
+enableVideoThumbs = false
+
+# Email and communication focus
+enableGraphGeneration = true
+```
+
+### Comprehensive Malware Analysis
+
+```text custom_malware/IPEDConfig.txt
+# Detailed analysis for malware investigations
+enableHash = true
+processFileSignatures = true
+enableFileParsing = true
+expandContainers = true
+entropyTest = true
+
+# Don't skip potential malware
+ignoreDuplicates = false
+skipKnownFiles = false
+
+# Minimal image/video processing
+enableImageThumbs = false
+enableVideoThumbs = false
+enableCarving = false
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Command-Line Options" icon="terminal" href="/processing/command-line">
+    Learn command-line parameters that work with configuration
+  </Card>
+  
+  <Card title="Processing Profiles" icon="sliders" href="/processing/profiles">
+    Explore pre-configured profiles for different scenarios
+  </Card>
+  
+  <Card title="Data Sources" icon="hard-drive" href="/processing/data-sources">
+    Understand supported evidence formats and sources
+  </Card>
+  
+  <Card title="Troubleshooting" icon="wrench" href="https://github.com/sepinf-inc/IPED/wiki/Troubleshooting">
+    Solve common configuration issues
+  </Card>
+</CardGroup>

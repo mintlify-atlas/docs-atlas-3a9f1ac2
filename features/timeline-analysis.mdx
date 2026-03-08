@@ -1,0 +1,422 @@
+---
+title: Timeline Analysis
+description: Chronological analysis and visualization of digital evidence
+---
+
+IPED provides powerful timeline analysis capabilities that allow investigators to view and analyze digital evidence in chronological order, revealing patterns and relationships across time.
+
+## Overview
+
+Timeline analysis enables:
+
+- **Chronological view** - Display items sorted by timestamp
+- **Event expansion** - Expand items into multiple timestamped events
+- **Unified timeline** - Combine events from all evidence sources
+- **Time-based filtering** - Focus on specific time periods
+- **Event correlation** - Identify concurrent activities across devices
+- **Visual timeline** - Graphical representation of events over time
+
+## Timeline Features
+
+### Timestamp Types
+
+IPED processes multiple timestamp types for comprehensive timeline:
+
+- **File System Timestamps**
+  - Created time
+  - Modified time
+  - Accessed time
+  - Entry modified time (MFT change)
+
+- **Metadata Timestamps**
+  - Document creation date
+  - Last printed date
+  - Email sent/received
+  - Photo taken date (EXIF)
+  - GPS track points
+
+- **Application Timestamps**
+  - Chat message time
+  - Call start/end time
+  - Browser history visits
+  - System log entries
+
+### Timeline View Mode
+
+Enable timeline view from the analysis interface:
+
+```java
+public void setTimelineTableView(boolean isEnabled) {
+    if (timelineViewEnabled != isEnabled) {
+        timelineViewEnabled = isEnabled;
+        updateGUI(true);
+    }
+}
+```
+
+When enabled:
+- Items automatically sorted by timestamp ascending
+- Timeline columns moved to prominent position
+- Special timeline icon displayed
+- Results filtered through TimelineResults
+
+## Event Expansion
+
+Timeline view can expand single items into multiple timestamped events:
+
+```java
+public IMultiSearchResult filterResult(IMultiSearchResult src) {
+    if (isTimelineViewEnabled()) {
+        return new TimelineResults(appCase).expandTimestamps(src);
+    }
+    return src;
+}
+```
+
+### Expansion Examples
+
+**Email Message**
+Expanded into:
+- Sent event
+- Received event  
+- Each attachment as separate event
+
+**GPS Track File**
+Expanded into:
+- Individual track point events
+- Each point with location and time
+
+**Browser History**
+Expanded into:
+- Individual page visit events
+- Download events
+- Form submission events
+
+**Chat Conversation**
+Expanded into:
+- Individual message events
+- Media attachment events
+- Call events
+
+## Timeline Columns
+
+Timeline-specific columns displayed:
+
+### Timestamp
+The primary chronological ordering field:
+- Date and time of event
+- Sortable in ascending/descending order
+- Timezone-aware display
+
+### Event Type
+Classification of timeline event:
+- File system operation
+- Communication event
+- Application activity
+- User action
+
+### Description
+Human-readable event description:
+- "Email sent to john@example.com"
+- "Photo taken at location"
+- "File created"
+- "WhatsApp message sent"
+
+### Source Device
+Originating device or data source:
+- Device name
+- Evidence identifier
+- User account
+
+### Related Items
+Links to associated evidence items:
+- Parent item
+- Related conversations
+- Attached files
+
+## Column Management
+
+```java
+private void updateGUI(boolean updateResults) {
+    if (timelineViewEnabled) {
+        // Move timeline columns to position 5 (prominent)
+        ColumnsManagerUI.getInstance().moveTimelineColumns(5);
+    } else {
+        // Move timeline columns to position 14 (less prominent)
+        ColumnsManagerUI.getInstance().moveTimelineColumns(14);
+    }
+}
+```
+
+Automatic column reordering:
+- Timeline mode: timestamp, event type, description prominently displayed
+- Normal mode: standard forensic columns (hash, size, type) prioritized
+
+## Automatic Sorting
+
+Timeline view enforces chronological sorting:
+
+```java
+private void updateSortingColumn() {
+    if (timelineViewEnabled) {
+        // Save current sort keys
+        timelinePrevSortKeys = sortKeys;
+        
+        // Set to timestamp ascending
+        ArrayList<SortKey> sortScore = new ArrayList<>();
+        sortScore.add(new SortKey(timeStampColIdx, SortOrder.ASCENDING));
+        resultsTable.getRowSorter().setSortKeys(sortScore);
+    } else {
+        // Restore previous sorting
+        resultsTable.getRowSorter().setSortKeys(timelinePrevSortKeys);
+    }
+}
+```
+
+Behavior:
+- Entering timeline mode: automatically sort by timestamp
+- Exiting timeline mode: restore previous sort order
+- Manual sorting still available
+
+## Time Chart Visualization
+
+IPED provides graphical timeline visualization:
+
+### Event Distribution Chart
+Bar chart showing:
+- Number of events per time period
+- Configurable granularity (hour, day, week, month)
+- Interactive zoom and pan
+- Click to filter to time period
+
+### Activity Heatmap
+Visual representation of:
+- Activity intensity over time
+- Multi-device correlation
+- Peak activity periods
+- Gaps in evidence
+
+### Suspects Correlation Chart
+Multi-timeline view showing:
+- Activities of multiple suspects
+- Temporal relationships
+- Concurrent events across devices
+- Communication patterns
+
+## Time-Based Filtering
+
+### Date Range Selection
+
+Filter results to specific time periods:
+
+```
+2023-01-01 00:00:00 TO 2023-01-31 23:59:59
+```
+
+Supports:
+- Absolute dates and times
+- Relative time (last 7 days, last month)
+- Custom date/time ranges
+- Multiple non-contiguous periods
+
+### Time-of-Day Analysis
+
+Filter by time patterns:
+- Business hours (9am-5pm)
+- After hours activity
+- Specific time windows
+- Recurring time patterns
+
+### Timeline Bookmarking
+
+Bookmark interesting time periods:
+- Label significant events
+- Mark suspicious timeframes
+- Annotate timeline segments
+- Export bookmarked periods
+
+## Multi-Source Timeline
+
+IPED combines events from multiple sources:
+
+### Data Sources
+
+- **Multiple devices** - Phones, computers, tablets
+- **Cloud services** - Email, social media, storage
+- **Network logs** - Router logs, firewall logs
+- **Application data** - Chat apps, browsers, documents
+
+### Time Synchronization
+
+Automatic timezone handling:
+- Detect device timezone settings
+- Convert all times to common timezone
+- Display timezone information
+- Account for daylight saving time
+
+### Time Skew Detection
+
+Identify system clock discrepancies:
+- Compare timestamps across sources
+- Flag suspicious time differences
+- Adjust for known clock skew
+- Document time inconsistencies
+
+## Event Filtering
+
+Timeline supports comprehensive filtering:
+
+### By Event Type
+
+- File system events only
+- Communication events (email, chat, calls)
+- Application-specific events
+- User actions vs. system events
+
+### By Source
+
+- Specific device or evidence item
+- Specific user account
+- Specific application
+
+### By Content
+
+- Events mentioning keywords
+- Events involving specific people
+- Events at specific locations
+- Events matching patterns
+
+## Use Cases
+
+### Alibi Verification
+
+Verify suspect's claimed whereabouts:
+1. Extract GPS timeline from phone
+2. Correlate with cell tower data
+3. Compare with camera EXIF timestamps
+4. Cross-reference with communication timeline
+
+### Activity Reconstruction
+
+Reconstruct sequence of events:
+1. Enable timeline view
+2. Filter to relevant time period
+3. Review chronological sequence
+4. Identify gaps and anomalies
+5. Document activity pattern
+
+### Multi-Suspect Correlation
+
+Analyze coordinated activities:
+1. Create timeline for each suspect
+2. Overlay timelines on chart
+3. Identify concurrent activities
+4. Find communication overlaps
+5. Map interaction patterns
+
+### Data Exfiltration Detection
+
+Detect unauthorized data access:
+1. Timeline of file access events
+2. Correlate with network activity
+3. Identify large file transfers
+4. Match with removable media connections
+
+### Incident Response Timeline
+
+Reconstruct security incident:
+1. Initial compromise timestamp
+2. Lateral movement activities
+3. Data access and exfiltration
+4. Cleanup and anti-forensics
+5. Complete attack timeline
+
+## Performance Optimization
+
+### Indexed Timestamps
+
+All timestamps indexed for fast sorting:
+- Lucene date indexing
+- Binary tree sorting
+- Cached sort results
+
+### Lazy Event Expansion
+
+Events expanded on-demand:
+- Initial view shows aggregated items
+- Expand to events only when needed
+- Reduces memory usage
+- Faster initial load
+
+### Time Range Optimization
+
+Optimized queries for date ranges:
+```
+timestamp:[2023-01-01 TO 2023-12-31]
+```
+
+Lucene efficiently:
+- Prunes non-matching documents
+- Uses inverted index
+- Supports range queries
+
+## Export Options
+
+### Timeline Report
+
+Generate chronological report:
+- HTML format with embedded CSS
+- CSV format for analysis in Excel
+- PDF format for formal reports
+- Configurable columns and filters
+
+### Super Timeline Format
+
+Export in Plaso/log2timeline format:
+- Compatible with external tools
+- Standard forensic timeline format
+- Includes all metadata
+- Preserves relationships
+
+## Integration with Other Features
+
+### Graph Analysis
+
+Combine timeline with communication graph:
+- Visualize when communications occurred
+- Identify temporal clustering
+- See evolution of relationships over time
+
+### Location Mapping
+
+Overlay timeline on map:
+- Movement timeline
+- Location history
+- Geofenced events
+- Travel patterns
+
+### Search Integration
+
+Search within timeline:
+- Keyword search limited to time period
+- Find events matching criteria
+- Highlight matches in timeline
+
+## Best Practices
+
+1. **Verify timezone settings** - Ensure correct timezone conversion
+2. **Account for clock skew** - Document known time discrepancies  
+3. **Use multiple timestamp types** - Corroborate with different sources
+4. **Bookmark key events** - Mark significant points for reference
+5. **Export timeline data** - Preserve for reporting and analysis
+6. **Cross-reference sources** - Validate timestamps across devices
+7. **Document gaps** - Note missing time periods and reasons
+
+## Limitations
+
+- Timestamp accuracy depends on source reliability
+- System clock manipulation can affect timeline
+- Not all items have reliable timestamps
+- Timezone conversion requires proper configuration
+- Large timelines can impact performance
+- Event expansion increases result set size

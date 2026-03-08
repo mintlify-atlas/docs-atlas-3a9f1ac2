@@ -1,0 +1,332 @@
+---
+title: Supported Formats
+description: Comprehensive list of all file formats and disk images supported by IPED
+icon: file-lines
+---
+
+## Forensic Disk Image Formats
+
+IPED uses the Sleuthkit Library to decode disk images and file systems, with additional support for proprietary formats.
+
+### Disk Image Types
+
+| Format | Extensions | Description | Splitting Support |
+|--------|------------|-------------|-------------------|
+| **RAW/DD** | `.dd`, `.raw`, `.img` | Raw disk dump format | Single and split segments |
+| **E01** | `.e01`, `.e02`, ... | EnCase Evidence File Format | Single and split segments |
+| **EX01** | `.ex01` | Expert Witness Extended Format | Single and split segments |
+| **VHD** | `.vhd` | Virtual Hard Disk (Microsoft) | Single segment |
+| **VHDX** | `.vhdx` | Virtual Hard Disk v2 (Microsoft) | Single segment |
+| **VMDK** | `.vmdk` | Virtual Machine Disk (VMware) | Single segment and differentials |
+| **AFF** | `.aff`, `.afd` | Advanced Forensic Format | Supported |
+| **ISO9660** | `.iso` | ISO disk image | Single segment |
+| **UDF** | `.iso`, `.udf` | Universal Disk Format | Supported |
+| **AD1** | `.ad1` | AccessData Logical Image | Supported |
+| **UFDR** | `.ufdr` | Cellebrite Universal Forensic Data Report | Supported |
+
+<Note>
+**Embedded Disk Processing**: IPED can process supported disk images contained within the main evidence recursively when `processEmbeddedDisks = true` is enabled. Note that splitted images and snapshots are not currently supported for embedded processing.
+</Note>
+
+### File System Support
+
+Through Sleuthkit integration, IPED supports:
+
+- **NTFS** - New Technology File System (Windows)
+- **FAT12/FAT16/FAT32** - File Allocation Table
+- **exFAT** - Extended File Allocation Table
+- **Ext2/Ext3/Ext4** - Extended File System (Linux)
+- **HFS+** - Hierarchical File System Plus (macOS)
+- **APFS** - Apple File System (macOS/iOS)
+- **ISO9660/UDF** - Optical disc file systems
+- **LVM** - Logical Volume Manager (Linux)
+
+## Document Formats
+
+### Microsoft Office
+
+| Format | Extensions | Parsing | OCR Support |
+|--------|------------|---------|-------------|
+| Word Documents | `.doc`, `.docx`, `.docm` | Full | Yes |
+| Excel Spreadsheets | `.xls`, `.xlsx`, `.xlsm` | Full | Yes |
+| PowerPoint Presentations | `.ppt`, `.pptx`, `.pptm` | Full | Yes |
+| Outlook Files | `.pst`, `.ost`, `.msg`, `.eml` | Full | Yes |
+| OneNote | `.one` | Full | No |
+| Publisher | `.pub` | Limited | Yes |
+| Visio | `.vsd`, `.vsdx` | Limited | Yes |
+
+### PDF and E-books
+
+| Format | Extensions | Parsing | OCR Support |
+|--------|------------|---------|-------------|
+| PDF | `.pdf` | Full | Yes (scanned PDFs) |
+| EPUB | `.epub` | Full | No |
+| MOBI | `.mobi` | Full | No |
+| AZW | `.azw`, `.azw3` | Limited | No |
+
+### LibreOffice/OpenOffice
+
+| Format | Extensions | Parsing | Thumbnail Support |
+|--------|------------|---------|-------------------|
+| Writer | `.odt`, `.ott` | Full | Yes |
+| Calc | `.ods`, `.ots` | Full | Yes |
+| Impress | `.odp`, `.otp` | Full | Yes |
+| Draw | `.odg` | Full | Yes |
+
+### Apple iWork
+
+| Format | Extensions | Parsing | Notes |
+|--------|------------|---------|-------|
+| Pages | `.pages` | Full | iWork 13+ supported |
+| Numbers | `.numbers` | Full | iWork 13+ supported |
+| Keynote | `.keynote` | Full | iWork 13+ supported |
+
+### Other Document Formats
+
+- Rich Text Format (`.rtf`)
+- Plain Text (`.txt`, `.log`)
+- CSV (`.csv`)
+- HTML/XHTML (`.html`, `.htm`, `.xhtml`)
+- XML (`.xml`)
+- Markdown (`.md`)
+- LaTeX (`.tex`)
+
+## Image Formats
+
+### Standard Image Formats
+
+| Format | Extensions | Thumbnail | Metadata | Similarity Search |
+|--------|------------|-----------|----------|-------------------|
+| JPEG | `.jpg`, `.jpeg` | Yes | EXIF, IPTC, XMP | Yes |
+| PNG | `.png` | Yes | XMP | Yes |
+| GIF | `.gif` | Yes | XMP | Yes |
+| BMP | `.bmp` | Yes | Limited | Yes |
+| TIFF | `.tif`, `.tiff` | Yes | EXIF, IPTC, XMP | Yes |
+| WebP | `.webp` | Yes | EXIF, XMP | Yes |
+| SVG | `.svg` | Yes | Limited | No |
+| ICO | `.ico` | Yes | No | Yes |
+
+### RAW Camera Formats
+
+| Camera Brand | Extensions | Support Level |
+|--------------|------------|---------------|
+| Canon | `.cr2`, `.cr3`, `.crw` | Full |
+| Nikon | `.nef`, `.nrw` | Full |
+| Sony | `.arw`, `.srf`, `.sr2` | Full |
+| Olympus | `.orf` | Full |
+| Panasonic | `.rw2`, `.raw` | Full |
+| Fujifilm | `.raf` | Full |
+| Pentax | `.pef`, `.ptx` | Full |
+| Adobe | `.dng` | Full |
+
+### Apple Image Formats
+
+| Format | Extensions | Parsing | Frame Extraction |
+|--------|------------|---------|------------------|
+| HEIC/HEIF | `.heic`, `.heif` | Full | Yes (animated sequences) |
+| APNG | `.apng` | Full | Yes (animated) |
+
+## Video Formats
+
+| Format | Extensions | Parsing | Frame Extraction | Transcoding |
+|--------|------------|---------|------------------|-------------|
+| MP4 | `.mp4`, `.m4v` | Full | Yes | Yes |
+| AVI | `.avi` | Full | Yes | Yes |
+| MOV | `.mov` | Full | Yes | Yes |
+| MKV | `.mkv` | Full | Yes | Yes |
+| WebM | `.webm` | Full | Yes | Yes |
+| FLV | `.flv` | Full | Yes | Yes |
+| WMV | `.wmv`, `.asf` | Full | Yes | Yes |
+| MPEG | `.mpg`, `.mpeg`, `.m2v` | Full | Yes | Yes |
+| 3GP/3G2 | `.3gp`, `.3g2` | Full | Yes | Yes |
+| VOB | `.vob` | Full | Yes | Yes |
+| HEVC | `.hevc`, `.h265` | Full | Yes | Yes |
+| Dahua DAV | `.dav` | Full | Yes | Yes |
+
+<Note>
+Video frame extraction settings are configurable in `VideoThumbsConfig.txt`. You can extract frames as a function of video duration or at fixed intervals.
+</Note>
+
+## Audio Formats
+
+| Format | Extensions | Parsing | Transcription Support |
+|--------|------------|---------|----------------------|
+| MP3 | `.mp3` | Full | Yes |
+| WAV | `.wav` | Full | Yes |
+| AAC | `.aac`, `.m4a` | Full | Yes |
+| FLAC | `.flac` | Full | Yes |
+| OGG | `.ogg`, `.oga` | Full | Yes |
+| Opus | `.opus` | Full | Yes |
+| WMA | `.wma` | Full | Yes |
+| AMR | `.amr`, `.awb` | Full | Yes |
+| 3GPP Audio | `.3gp`, `.3g2` | Full | Yes |
+| Speex | `.spx` | Full | Yes |
+| iLBC | `.ilbc` | Full | Yes |
+| QCELP | `.qcp` | Full | Yes |
+| CAF | `.caf` | Full | Yes |
+
+## Archive and Compression
+
+| Format | Extensions | Expansion | Carving Support |
+|--------|------------|-----------|----------------|
+| ZIP | `.zip`, `.zipx` | Yes | Yes |
+| RAR | `.rar` | Yes | Yes |
+| 7-Zip | `.7z` | Yes | Yes |
+| TAR | `.tar`, `.tar.gz`, `.tgz` | Yes | Yes |
+| GZIP | `.gz` | Yes | Yes |
+| BZIP2 | `.bz2` | Yes | Yes |
+| XZ | `.xz` | Yes | No |
+| CAB | `.cab` | Yes | No |
+| ISO | `.iso` | Yes | Yes |
+| DMG | `.dmg` | Limited | No |
+
+## Email and Communication
+
+### Email Formats
+
+| Format | Extensions | Parsing Level | Attachment Extraction |
+|--------|------------|---------------|----------------------|
+| PST/OST | `.pst`, `.ost` | Full | Yes |
+| MBOX | `.mbox` | Full | Yes |
+| EML | `.eml` | Full | Yes |
+| MSG | `.msg` | Full | Yes |
+| EMLX | `.emlx` | Full | Yes |
+| DBX | `.dbx` | Full | Yes |
+| Apple Mail | Various | Full | Yes |
+
+### Instant Messaging
+
+| Application | Database Types | Parsing Level | Media Recovery |
+|-------------|----------------|---------------|----------------|
+| WhatsApp | `.db`, `.crypt*` | Full | Yes |
+| Telegram | `.db` | Full | Yes |
+| Skype | `.db` | Full | Limited |
+| Discord | Cache files | Full | Yes |
+| Threema | `.db` | Full | Yes |
+
+## Mobile Forensics
+
+### iOS Formats
+
+- iTunes Backup parsing
+- Property List files (`.plist`, binary plist)
+- SQLite databases
+- NSKeyedArchiver files
+- LZFSE compressed files (iCloud backups)
+
+### Android Formats
+
+- Android Package (`.apk`)
+- SQLite databases
+- XML preferences
+- WhatsApp databases (all versions)
+
+### Cellebrite UFDR
+
+- Full UFDR report parsing
+- Physical Analyzer 8, 9, 10+ support
+- Contact and email view files
+- Chat message extraction
+- Location data from PA 10+
+- Media classification properties
+
+## Database Formats
+
+| Format | Extensions | Parsing | Table Extraction |
+|--------|------------|---------|------------------|
+| SQLite | `.db`, `.sqlite`, `.sqlite3` | Full | Yes |
+| Microsoft Access | `.mdb`, `.accdb` | Full | Yes |
+| dBase | `.dbf` | Full | Yes |
+
+## Multimedia Metadata
+
+### Metadata Standards
+
+- **EXIF** - Exchangeable Image File Format
+- **IPTC** - International Press Telecommunications Council
+- **XMP** - Extensible Metadata Platform
+- **ID3** - Audio metadata (MP3 tags)
+- **Vorbis Comments** - OGG metadata
+- **QuickTime Metadata** - MOV/MP4 metadata
+
+## File Carving Support
+
+<Accordion title="Carving Capabilities">
+  <AccordionItem title="Supported Carving Formats (40+)">
+    IPED's carving engine supports recovering deleted files in the following formats:
+    
+    **Images**: JPEG, PNG, GIF, BMP, TIFF, WebP, HEIC
+    
+    **Videos**: MP4, AVI, MOV, MPG, WEBM, MKV
+    
+    **Documents**: PDF, Office documents
+    
+    **Archives**: ZIP, RAR, 7-Zip
+    
+    **P2P Files**: eMule `.part.met`, Known.met, BitTorrent `.torrent`, `resume.dat`, Shareaza `.sd`
+    
+    **Other**: Various proprietary formats
+  </AccordionItem>
+  
+  <AccordionItem title="Carving Configuration">
+    Carving behavior is configured in `CarverConfig.xml`:
+    - Define which areas to scan (unallocated, slack space, etc.)
+    - Specify file types to recover
+    - Set validation rules
+    - Configure carving depth and size limits
+  </AccordionItem>
+</Accordion>
+
+## P2P and File Sharing
+
+| Application | File Types | Parsing |
+|-------------|------------|----------|
+| eMule | `.part`, `.part.met`, `known.met` | Full |
+| BitTorrent | `.torrent`, `resume.dat`, `settings.dat` | Full |
+| Shareaza | `.sd`, `Library1.dat`, `Library2.dat` | Full |
+| Ares | History files | Full |
+| Transmission | Control files | Full |
+| uTorrent | Various | Full |
+
+## Specialized Formats
+
+### Financial
+
+- **OFX** (`.ofx`) - Open Financial Exchange
+- **QFX** (`.qfx`) - Quicken Financial Exchange
+
+### System Artifacts
+
+- **Windows Registry** - Full parsing
+- **LNK Files** (`.lnk`) - Shortcut analysis
+- **Jump Lists** - Automatic and custom destinations
+- **Prefetch** (`.pf`) - Windows prefetch files
+- **EVTX** - Windows Event Logs
+- **Activities Cache** - Windows Timeline
+- **USN Journal** - NTFS change journal
+- **TOR** Browser history
+
+### Graphics and Design
+
+- Adobe Photoshop (`.psd`)
+- Windows Metafile (`.wmf`, `.emf`)
+- JBIG2 (`.jb2`, `.jbig2`)
+
+## Format Detection
+
+IPED uses Apache Tika for signature-based file type detection, which:
+
+- Identifies files by content signature, not just extension
+- Detects file type mismatches
+- Handles files with incorrect or missing extensions
+- Supports custom signature definitions
+
+<Note>
+File signature processing can be controlled with the `processFileSignatures` option in `IPEDConfig.txt`.
+</Note>
+
+## Related Resources
+
+- [Configuration Options](/reference/configuration-options) - Enable/disable format parsing
+- [Processing Tasks](/reference/processing-tasks) - Learn about format-specific processing
+- [Troubleshooting](/reference/troubleshooting) - Format-related issues

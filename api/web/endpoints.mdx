@@ -1,0 +1,665 @@
+---
+title: Web API Endpoints
+description: Complete REST API reference for remote IPED case access
+---
+
+The IPED Web API provides RESTful HTTP endpoints for searching, retrieving, and manipulating evidence items remotely.
+
+## Starting the Web API Server
+
+Start the Web API server using the command line:
+
+```bash
+java -jar iped.jar --webapi \
+  --host=0.0.0.0 \
+  --port=8080 \
+  --sources=/path/to/sources.json
+```
+
+### Command Line Options
+
+<ParamField path="--host" type="string" default="0.0.0.0">
+  Host address to bind the server. Use `127.0.0.1` for local access only.
+</ParamField>
+
+<ParamField path="--port" type="int" default="8080">
+  Port number for the HTTP server
+</ParamField>
+
+<ParamField path="--sources" type="string" required>
+  Path to JSON file or URL containing case source definitions
+</ParamField>
+
+### Sources Configuration
+
+Create a `sources.json` file defining available cases:
+
+```json
+[
+  {
+    "id": "case1",
+    "path": "/data/iped-cases/case-2024-001"
+  },
+  {
+    "id": "case2",
+    "path": "/data/iped-cases/case-2024-002"
+  }
+]
+```
+
+## Base URL
+
+All endpoints are relative to: `http://HOST:PORT`
+
+Example: `http://localhost:8080`
+
+## Sources Endpoints
+
+### List Sources
+
+Retrieve all available case sources.
+
+<CodeGroup>
+```bash cURL
+curl "http://localhost:8080/sources"
+```
+
+```python Python
+import requests
+
+response = requests.get("http://localhost:8080/sources")
+sources = response.json()
+```
+
+```java Java
+HttpClient client = HttpClient.newHttpClient();
+HttpRequest request = HttpRequest.newBuilder()
+    .uri(URI.create("http://localhost:8080/sources"))
+    .build();
+
+HttpResponse<String> response = client.send(
+    request, 
+    HttpResponse.BodyHandlers.ofString()
+);
+```
+</CodeGroup>
+
+<ResponseField name="data" type="array">
+  Array of source objects
+  
+  <Expandable title="Source Object">
+    <ResponseField name="id" type="string">
+      Unique source identifier
+    </ResponseField>
+    
+    <ResponseField name="path" type="string">
+      Filesystem path to the case directory
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+**Response Example:**
+
+```json
+{
+  "data": [
+    {
+      "id": "case1",
+      "path": "/data/iped-cases/case-2024-001"
+    },
+    {
+      "id": "case2",
+      "path": "/data/iped-cases/case-2024-002"
+    }
+  ]
+}
+```
+
+### Get Source Details
+
+Retrieve information about a specific source.
+
+**Endpoint:** `GET /sources/{sourceID}`
+
+<ParamField path="sourceID" type="string" required>
+  Source identifier
+</ParamField>
+
+<CodeGroup>
+```bash cURL
+curl "http://localhost:8080/sources/case1"
+```
+
+```python Python
+response = requests.get("http://localhost:8080/sources/case1")
+source = response.json()
+```
+</CodeGroup>
+
+**Response Example:**
+
+```json
+{
+  "id": "case1",
+  "path": "/data/iped-cases/case-2024-001"
+}
+```
+
+### Add Source
+
+Dynamically add a new case source.
+
+**Endpoint:** `POST /sources`
+
+<ParamField body="id" type="string" required>
+  Unique identifier for the source
+</ParamField>
+
+<ParamField body="path" type="string" required>
+  Filesystem path to the case directory
+</ParamField>
+
+<CodeGroup>
+```bash cURL
+curl -X POST "http://localhost:8080/sources" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "id": "case3",
+    "path": "/data/iped-cases/case-2024-003"
+  }'
+```
+
+```python Python
+data = {
+    "id": "case3",
+    "path": "/data/iped-cases/case-2024-003"
+}
+
+response = requests.post(
+    "http://localhost:8080/sources",
+    json=data
+)
+```
+</CodeGroup>
+
+## Search Endpoint
+
+### Search Documents
+
+Search for documents across all sources or a specific source.
+
+**Endpoint:** `GET /search`
+
+<ParamField query="q" type="string" required>
+  Lucene query string (see [Search API](/api/search-api) for syntax)
+</ParamField>
+
+<ParamField query="sourceID" type="string">
+  Optional source identifier to search within a specific case. If omitted, searches all sources.
+</ParamField>
+
+<CodeGroup>
+```bash cURL
+# Search all sources
+curl "http://localhost:8080/search?q=type:pdf"
+
+# Search specific source
+curl "http://localhost:8080/search?q=type:pdf&sourceID=case1"
+```
+
+```python Python
+# Search all sources
+params = {'q': 'type:pdf'}
+response = requests.get(
+    "http://localhost:8080/search",
+    params=params
+)
+
+# Search specific source
+params = {'q': 'type:pdf', 'sourceID': 'case1'}
+response = requests.get(
+    "http://localhost:8080/search",
+    params=params
+)
+```
+</CodeGroup>
+
+<ResponseField name="docs" type="array">
+  Array of document references
+  
+  <Expandable title="Document Reference">
+    <ResponseField name="source" type="string">
+      Source identifier containing the document
+    </ResponseField>
+    
+    <ResponseField name="id" type="int">
+      Item ID within the source
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+**Response Example:**
+
+```json
+{
+  "docs": [
+    {"source": "case1", "id": 12345},
+    {"source": "case1", "id": 12346},
+    {"source": "case2", "id": 5678}
+  ]
+}
+```
+
+### Query Examples
+
+```bash
+# Find PDFs
+curl "http://localhost:8080/search?q=type:pdf"
+
+# Find images
+curl "http://localhost:8080/search?q=category:images"
+
+# Complex query
+curl "http://localhost:8080/search?q=type:pdf+AND+content:confidential"
+
+# URL-encoded query
+curl "http://localhost:8080/search?q=name%3Areport.pdf"
+```
+
+## Document Endpoints
+
+### Get Document Properties
+
+Retrieve all properties and metadata for a document.
+
+**Endpoint:** `GET /sources/{sourceID}/docs/{id}`
+
+<ParamField path="sourceID" type="string" required>
+  Source identifier
+</ParamField>
+
+<ParamField path="id" type="int" required>
+  Item ID
+</ParamField>
+
+<CodeGroup>
+```bash cURL
+curl "http://localhost:8080/sources/case1/docs/12345"
+```
+
+```python Python
+response = requests.get(
+    "http://localhost:8080/sources/case1/docs/12345"
+)
+doc = response.json()
+print(f"Name: {doc['properties']['name'][0]}")
+print(f"Size: {doc['properties']['length'][0]}")
+```
+</CodeGroup>
+
+<ResponseField name="source" type="string">
+  Source identifier
+</ResponseField>
+
+<ResponseField name="id" type="int">
+  Item ID
+</ResponseField>
+
+<ResponseField name="luceneId" type="int">
+  Internal Lucene document ID
+</ResponseField>
+
+<ResponseField name="properties" type="object">
+  Map of property names to arrays of values
+</ResponseField>
+
+<ResponseField name="bookmarks" type="array">
+  Array of bookmark names assigned to this item
+</ResponseField>
+
+<ResponseField name="selected" type="boolean">
+  Whether the item is selected/checked
+</ResponseField>
+
+**Response Example:**
+
+```json
+{
+  "source": "case1",
+  "id": 12345,
+  "luceneId": 98765,
+  "properties": {
+    "name": ["report.pdf"],
+    "path": ["/evidence/documents/report.pdf"],
+    "length": ["2456789"],
+    "type": ["pdf"],
+    "hash": ["d41d8cd98f00b204e9800998ecf8427e"],
+    "modificationDate": ["2024-01-15T10:30:00Z"],
+    "category": ["documents"],
+    "author": ["John Doe"],
+    "title": ["Investigation Report"]
+  },
+  "bookmarks": ["important", "reviewed"],
+  "selected": true
+}
+```
+
+### Get Document Content
+
+Download the raw binary content of a document.
+
+**Endpoint:** `GET /sources/{sourceID}/docs/{id}/content`
+
+<ParamField path="sourceID" type="string" required>
+  Source identifier
+</ParamField>
+
+<ParamField path="id" type="int" required>
+  Item ID
+</ParamField>
+
+<CodeGroup>
+```bash cURL
+# Download to file
+curl "http://localhost:8080/sources/case1/docs/12345/content" \
+  -o downloaded-file.pdf
+```
+
+```python Python
+response = requests.get(
+    "http://localhost:8080/sources/case1/docs/12345/content",
+    stream=True
+)
+
+with open('downloaded-file.pdf', 'wb') as f:
+    for chunk in response.iter_content(chunk_size=8192):
+        f.write(chunk)
+```
+</CodeGroup>
+
+**Response:**
+- Content-Type: `application/octet-stream`
+- Content-Disposition: `attachment; filename="original-filename.ext"`
+- Binary content stream
+
+### Get Document Text
+
+Retrieve the extracted text content of a document.
+
+**Endpoint:** `GET /sources/{sourceID}/docs/{id}/text`
+
+<ParamField path="sourceID" type="string" required>
+  Source identifier
+</ParamField>
+
+<ParamField path="id" type="int" required>
+  Item ID
+</ParamField>
+
+<CodeGroup>
+```bash cURL
+curl "http://localhost:8080/sources/case1/docs/12345/text"
+```
+
+```python Python
+response = requests.get(
+    "http://localhost:8080/sources/case1/docs/12345/text"
+)
+text = response.text
+print(text)
+```
+</CodeGroup>
+
+**Response:**
+- Content-Type: `text/plain; charset=UTF-8`
+- Extracted text content
+
+## Bookmark Endpoints
+
+### List Bookmarks
+
+Get all bookmark names across all sources.
+
+**Endpoint:** `GET /bookmarks`
+
+<CodeGroup>
+```bash cURL
+curl "http://localhost:8080/bookmarks"
+```
+
+```python Python
+response = requests.get("http://localhost:8080/bookmarks")
+bookmarks = response.json()['data']
+```
+</CodeGroup>
+
+**Response Example:**
+
+```json
+{
+  "data": ["important", "reviewed", "evidence", "suspicious"]
+}
+```
+
+### List Bookmark Documents
+
+Get all documents in a specific bookmark.
+
+**Endpoint:** `GET /bookmarks/{bookmark}`
+
+<ParamField path="bookmark" type="string" required>
+  Bookmark name
+</ParamField>
+
+<CodeGroup>
+```bash cURL
+curl "http://localhost:8080/bookmarks/important"
+```
+
+```python Python
+response = requests.get(
+    "http://localhost:8080/bookmarks/important"
+)
+docs = response.json()['docs']
+```
+</CodeGroup>
+
+**Response Example:**
+
+```json
+{
+  "docs": [
+    {"source": "case1", "id": 12345},
+    {"source": "case1", "id": 12346},
+    {"source": "case2", "id": 5678}
+  ]
+}
+```
+
+### Create Bookmark
+
+Create a new bookmark.
+
+**Endpoint:** `POST /bookmarks/{bookmark}`
+
+<ParamField path="bookmark" type="string" required>
+  Name for the new bookmark
+</ParamField>
+
+<CodeGroup>
+```bash cURL
+curl -X POST "http://localhost:8080/bookmarks/new-bookmark"
+```
+
+```python Python
+response = requests.post(
+    "http://localhost:8080/bookmarks/new-bookmark"
+)
+```
+</CodeGroup>
+
+### Add Documents to Bookmark
+
+Add documents to an existing bookmark.
+
+**Endpoint:** `PUT /bookmarks/{bookmark}/add`
+
+<ParamField path="bookmark" type="string" required>
+  Bookmark name
+</ParamField>
+
+<ParamField body="docs" type="array" required>
+  Array of document references to add
+  
+  <Expandable title="Document Reference">
+    <ParamField body="source" type="string" required>
+      Source identifier
+    </ParamField>
+    
+    <ParamField body="id" type="int" required>
+      Item ID
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<CodeGroup>
+```bash cURL
+curl -X PUT "http://localhost:8080/bookmarks/important/add" \
+  -H "Content-Type: application/json" \
+  -d '[
+    {"source": "case1", "id": 12345},
+    {"source": "case1", "id": 12346}
+  ]'
+```
+
+```python Python
+docs = [
+    {"source": "case1", "id": 12345},
+    {"source": "case1", "id": 12346}
+]
+
+response = requests.put(
+    "http://localhost:8080/bookmarks/important/add",
+    json=docs
+)
+```
+</CodeGroup>
+
+### Remove Documents from Bookmark
+
+Remove documents from a bookmark.
+
+**Endpoint:** `PUT /bookmarks/{bookmark}/remove`
+
+<ParamField path="bookmark" type="string" required>
+  Bookmark name
+</ParamField>
+
+<ParamField body="docs" type="array" required>
+  Array of document references to remove
+</ParamField>
+
+<CodeGroup>
+```bash cURL
+curl -X PUT "http://localhost:8080/bookmarks/important/remove" \
+  -H "Content-Type: application/json" \
+  -d '[
+    {"source": "case1", "id": 12345}
+  ]'
+```
+
+```python Python
+docs = [{"source": "case1", "id": 12345}]
+
+response = requests.put(
+    "http://localhost:8080/bookmarks/important/remove",
+    json=docs
+)
+```
+</CodeGroup>
+
+### Delete Bookmark
+
+Delete a bookmark and all its associations.
+
+**Endpoint:** `DELETE /bookmarks/{bookmark}`
+
+<ParamField path="bookmark" type="string" required>
+  Bookmark name to delete
+</ParamField>
+
+<CodeGroup>
+```bash cURL
+curl -X DELETE "http://localhost:8080/bookmarks/old-bookmark"
+```
+
+```python Python
+response = requests.delete(
+    "http://localhost:8080/bookmarks/old-bookmark"
+)
+```
+</CodeGroup>
+
+### Rename Bookmark
+
+Rename an existing bookmark.
+
+**Endpoint:** `PUT /bookmarks/{old}/rename/{new}`
+
+<ParamField path="old" type="string" required>
+  Current bookmark name
+</ParamField>
+
+<ParamField path="new" type="string" required>
+  New bookmark name
+</ParamField>
+
+<CodeGroup>
+```bash cURL
+curl -X PUT "http://localhost:8080/bookmarks/temp/rename/archived"
+```
+
+```python Python
+response = requests.put(
+    "http://localhost:8080/bookmarks/temp/rename/archived"
+)
+```
+</CodeGroup>
+
+## Error Responses
+
+API endpoints return standard HTTP status codes:
+
+| Status Code | Description |
+|-------------|-------------|
+| 200 | Success |
+| 400 | Bad request (invalid parameters) |
+| 404 | Resource not found |
+| 500 | Internal server error |
+
+**Error Response Example:**
+
+```json
+{
+  "error": "Source not found: invalid-source",
+  "status": 404
+}
+```
+
+## Rate Limiting
+
+The API does not currently implement built-in rate limiting. For production deployments, implement rate limiting via reverse proxy (see [Authentication](/api/web/authentication)).
+
+## Swagger/OpenAPI
+
+The API provides Swagger documentation:
+
+**Endpoint:** `GET /application.wadl`
+
+Access interactive API docs at: `http://localhost:8080/application.wadl`
+
+## See Also
+
+- [Web API Authentication](/api/web/authentication) - Security and authentication
+- [Web API Examples](/api/web/examples) - Complete integration examples
+- [Search API](/api/search-api) - Query syntax reference

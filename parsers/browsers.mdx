@@ -1,0 +1,565 @@
+---
+title: 'Browser Artifact Parsers'
+description: 'Extract browsing history, downloads, bookmarks, and searches from web browsers'
+icon: 'browser'
+---
+
+## Overview
+
+IPED provides specialized parsers for major web browsers, extracting history, downloads, bookmarks, searches, and cache data from SQLite databases and proprietary formats. These parsers support Chrome, Firefox, Safari, Edge, and Internet Explorer artifacts.
+
+## Chrome Parser
+
+Extracts browsing artifacts from Chrome and Chromium-based browsers (Edge, Opera, Brave).
+
+### Supported Artifacts
+
+<ResponseField name="History" type="SQLite Database">
+  Main history database containing URLs, visits, downloads, and searches
+</ResponseField>
+
+<ResponseField name="index" type="Cache Index">
+  Chrome cache index files
+</ResponseField>
+
+### Database Structure
+
+<Tabs>
+  <Tab title="History">
+    ```sql Chrome History Tables
+    urls
+      - id (PRIMARY KEY)
+      - url (TEXT)
+      - title (TEXT)
+      - visit_count (INTEGER)
+      - last_visit_time (INTEGER)  // Microseconds since 1601-01-01
+    
+    visits
+      - id (PRIMARY KEY)
+      - url (FOREIGN KEY -> urls.id)
+      - visit_time (INTEGER)
+      - from_visit (INTEGER)
+    ```
+  </Tab>
+  <Tab title="Downloads">
+    ```sql Chrome Downloads
+    downloads
+      - id (PRIMARY KEY)
+      - current_path (TEXT)
+      - start_time (INTEGER)  // Microseconds since 1601-01-01
+      - received_bytes (INTEGER)
+      - total_bytes (INTEGER)
+    
+    downloads_url_chains
+      - id (FOREIGN KEY -> downloads.id)
+      - url (TEXT)
+    ```
+  </Tab>
+  <Tab title="Searches">
+    ```sql Chrome Search Terms
+    keyword_search_terms
+      - url_id (FOREIGN KEY -> urls.id)
+      - term (TEXT)
+    ```
+  </Tab>
+</Tabs>
+
+### Extracted Metadata
+
+```java Chrome Artifacts
+// History Entries
+ExtraProperties.URL                   // Visited URL
+ExtraProperties.VISIT_DATE            // Access timestamp
+TikaCoreProperties.TITLE              // Page title
+ExtraProperties.ACCESSED              // Last access time
+
+// Download Entries
+ExtraProperties.URL                   // Download source URL
+ExtraProperties.LOCAL_PATH            // Saved file path
+ExtraProperties.DOWNLOAD_DATE         // Download start time
+TikaCoreProperties.CREATED            // Creation timestamp
+ExtraProperties.DOWNLOAD_TOTAL_BYTES  // Total file size
+ExtraProperties.DOWNLOAD_RECEIVED_BYTES // Downloaded bytes
+```
+
+### Time Conversion
+
+<Info>
+Chrome stores timestamps as **microseconds since January 1, 1601 UTC**. IPED automatically converts to Java epoch time (milliseconds since 1970).
+</Info>
+
+```java Time Conversion Formula
+// Chrome time -> Java time
+javaTime = (chromeTime / 1000) - 11644473600000L
+
+// Where:
+// chromeTime: microseconds since 1601-01-01
+// 11644473600000: milliseconds between 1601 and 1970
+```
+
+### Generated Reports
+
+<CardGroup cols={2}>
+  <Card title="Chrome History" icon="clock-rotate-left">
+    Chronological list of visited sites with visit counts and last visit dates
+  </Card>
+  <Card title="Chrome Downloads" icon="download">
+    Downloaded files with timestamps, URLs, and byte counts
+  </Card>
+  <Card title="Chrome Searches" icon="magnifying-glass">
+    Search terms entered in address bar and search engines
+  </Card>
+  <Card title="History Entries" icon="file">
+    Individual browsing records with full metadata
+  </Card>
+</CardGroup>
+
+## Firefox Parser
+
+Processes Firefox artifacts from the places.sqlite database.
+
+### Supported Artifacts
+
+<ResponseField name="places.sqlite" type="SQLite Database">
+  Unified database for history, bookmarks, and downloads
+</ResponseField>
+
+<ResponseField name="sessionstore.jsonlz4" type="Session File">
+  Compressed JSON session data (separate parser)
+</ResponseField>
+
+### Database Schema
+
+<Tabs>
+  <Tab title="History">
+    ```sql Firefox History
+    moz_places
+      - id (PRIMARY KEY)
+      - url (TEXT)
+      - title (TEXT)
+      - visit_count (INTEGER)
+    
+    moz_historyvisits
+      - id (PRIMARY KEY)
+      - place_id (FOREIGN KEY -> moz_places.id)
+      - visit_date (INTEGER)  // Unix epoch microseconds
+    ```
+  </Tab>
+  <Tab title="Bookmarks">
+    ```sql Firefox Bookmarks
+    moz_bookmarks
+      - id (PRIMARY KEY)
+      - fk (FOREIGN KEY -> moz_places.id)
+      - title (TEXT)
+      - dateAdded (INTEGER)  // Unix epoch microseconds
+      - lastModified (INTEGER)
+    ```
+  </Tab>
+  <Tab title="Downloads">
+    ```sql Firefox Downloads (via Annotations)
+    moz_annos
+      - place_id (FOREIGN KEY -> moz_places.id)
+      - anno_attribute_id (INTEGER)
+      - content (TEXT/JSON)
+    
+    // anno_attribute_id:
+    // 3 = Download path
+    // 4 = Download attributes (JSON with endTime, fileSize)
+    ```
+  </Tab>
+</Tabs>
+
+### Extracted Metadata
+
+```java Firefox Artifacts
+// History
+ExtraProperties.URL                   // Visited URL
+ExtraProperties.VISIT_DATE            // Visit timestamp
+TikaCoreProperties.TITLE              // Page title
+
+// Bookmarks
+TikaCoreProperties.CREATED            // Bookmark added date
+TikaCoreProperties.MODIFIED           // Last modified date
+ExtraProperties.URL                   // Bookmarked URL
+
+// Downloads
+ExtraProperties.DOWNLOAD_DATE         // Download completion time
+ExtraProperties.LOCAL_PATH            // File save location
+ExtraProperties.DOWNLOAD_TOTAL_BYTES  // File size
+```
+
+### Time Conversion
+
+<Info>
+Firefox stores timestamps as **Unix epoch time in microseconds**. Simply divide by 1000 to get milliseconds.
+</Info>
+
+```java Firefox Time Conversion
+javaTime = firefoxTime / 1000
+// firefoxTime: microseconds since 1970-01-01
+```
+
+## Safari Parser
+
+Extracts artifacts from Safari SQLite databases and plist files.
+
+### Supported Artifacts
+
+<ResponseField name="History.db" type="SQLite Database">
+  Safari browsing history (iOS and macOS)
+</ResponseField>
+
+<ResponseField name="Bookmarks.plist" type="Property List">
+  Bookmark data in plist format
+</ResponseField>
+
+<ResponseField name="Downloads.plist" type="Property List">
+  Download history
+</ResponseField>
+
+### Features
+
+<CardGroup cols={2}>
+  <Card title="SQLite Parsing" icon="database">
+    History.db extraction for visit records
+  </Card>
+  <Card title="Plist Parsing" icon="list">
+    XML/binary plist parsing for bookmarks
+  </Card>
+  <Card title="iCloud Sync" icon="cloud">
+    Handles synced artifacts from CloudTabs
+  </Card>
+  <Card title="Reading List" icon="book">
+    Extracts Safari Reading List items
+  </Card>
+</CardGroup>
+
+## Edge Parser
+
+Processes Microsoft Edge artifacts including WebCacheV01.dat.
+
+### Supported Artifacts
+
+<ResponseField name="WebCacheV01.dat" type="ESE Database">
+  Extensible Storage Engine database containing cache and history
+</ResponseField>
+
+<ResponseField name="History" type="SQLite Database">
+  Chromium-based Edge (versions 79+)
+</ResponseField>
+
+### ESE Database Structure
+
+<Info>
+Edge Legacy uses **ESE (Extensible Storage Engine)** database format. IPED uses libesedb via JNA to parse these files.
+</Info>
+
+```java Edge WebCache Containers
+Container_0  // History
+Container_1  // Cookies
+Container_2  // History (duplicate)
+
+// Each container has:
+// - AccessedTime: Visit timestamp
+// - Url: Visited URL
+// - ResponseHeaders: HTTP headers
+```
+
+### Chromium-Based Edge
+
+New Edge (79+) uses Chrome's format:
+
+```java
+// Same as Chrome parser
+// Location: %LocalAppData%\Microsoft\Edge\User Data\Default\History
+```
+
+## Internet Explorer Parser
+
+Extracts data from index.dat files.
+
+### Supported Artifacts
+
+<ResponseField name="index.dat" type="Binary Index">
+  IE cache index files with history records
+</ResponseField>
+
+### Index.dat Structure
+
+```java IE Index.dat Records
+// URL Record Format:
+// - Signature: "URL "
+// - Modified time: FILETIME structure
+// - Accessed time: FILETIME structure
+// - URL: Null-terminated string
+// - Filename: Cache filename
+// - HTTP headers: Response headers
+```
+
+<Warning>
+Index.dat files use **FILETIME** format (100-nanosecond intervals since 1601-01-01). Conversion required for display.
+</Warning>
+
+## Common Browser Parser Features
+
+### Abstract Base Class
+
+All SQLite-based browsers extend:
+
+```java AbstractSqliteBrowserParser
+public abstract class AbstractSqliteBrowserParser extends AbstractParser {
+    
+    protected boolean extractEntries = true;
+    
+    @Field
+    public void setExtractEntries(boolean extractEntries) {
+        this.extractEntries = extractEntries;
+    }
+    
+    protected Connection getConnection(TikaInputStream tis,
+                                      Metadata metadata,
+                                      ParseContext context);
+}
+```
+
+### Configuration Options
+
+<ParamField path="extractEntries" type="boolean" default="true">
+  Extract individual history/download entries as separate items
+</ParamField>
+
+### HTML Report Generation
+
+All parsers generate structured HTML reports:
+
+```java Report Structure
+1. Summary Table (Resumed History)
+   - URL, Title, Visit Count, Last Visit
+   - Sorted by visit count (descending)
+
+2. Detailed Entries (Optional)
+   - Individual visit records
+   - Full timestamps and metadata
+
+3. Downloads Section
+   - Source URL, local path, file size
+   - Download timestamps
+
+4. Searches Section (Chrome)
+   - Search terms, timestamps
+   - Associated URLs
+```
+
+### Item Hierarchy
+
+```
+[Browser History File]
+├── Chrome History (Virtual ID: 0)
+│   ├── Chrome History Entry 1
+│   ├── Chrome History Entry 2
+│   └── ...
+├── Chrome Downloads (Virtual ID: 1)
+│   ├── Chrome Download Entry 1
+│   ├── Chrome Download Entry 2
+│   └── ...
+└── Chrome Searches (Virtual ID: 2)
+    ├── Search Entry 1
+    └── ...
+```
+
+## Metadata Properties
+
+### Standard Properties
+
+<ResponseField name="ExtraProperties.URL" type="string">
+  Full URL of visited page or download source
+</ResponseField>
+
+<ResponseField name="ExtraProperties.VISIT_DATE" type="date">
+  Timestamp when URL was accessed
+</ResponseField>
+
+<ResponseField name="ExtraProperties.DOWNLOAD_DATE" type="date">
+  Download start or completion time
+</ResponseField>
+
+<ResponseField name="ExtraProperties.LOCAL_PATH" type="string">
+  File system path where file was saved
+</ResponseField>
+
+<ResponseField name="ExtraProperties.DOWNLOAD_TOTAL_BYTES" type="long">
+  Total file size in bytes
+</ResponseField>
+
+<ResponseField name="ExtraProperties.DOWNLOAD_RECEIVED_BYTES" type="long">
+  Number of bytes successfully downloaded
+</ResponseField>
+
+<ResponseField name="TikaCoreProperties.TITLE" type="string">
+  Page title or bookmark name
+</ResponseField>
+
+<ResponseField name="ExtraProperties.ACCESSED" type="date">
+  Last access timestamp
+</ResponseField>
+
+### Virtual IDs
+
+```java Virtual ID Assignment
+// Chrome/Firefox:
+History Container  -> ITEM_VIRTUAL_ID = "1"
+Download Container -> ITEM_VIRTUAL_ID = "0" or "2"
+Search Container   -> ITEM_VIRTUAL_ID varies
+
+// Entries:
+Parent Virtual ID  -> PARENT_VIRTUAL_ID = parent container ID
+```
+
+## SQL Queries
+
+### Chrome Queries
+
+```sql
+-- Resumed History (visit counts)
+SELECT 
+    urls.id,
+    urls.title,
+    urls.url,
+    urls.visit_count,
+    ((urls.last_visit_time/1000)-11644473600000) AS last_visit
+FROM urls
+ORDER BY urls.visit_count DESC;
+
+-- Individual Visits
+SELECT 
+    visits.id,
+    urls.title,
+    ((visits.visit_time/1000)-11644473600000) AS visit_time,
+    urls.url
+FROM urls, visits
+WHERE urls.id = visits.url;
+
+-- Downloads
+SELECT 
+    downloads.id,
+    ((downloads.start_time/1000)-11644473600000) AS start_time,
+    downloads_url_chains.url,
+    downloads.current_path,
+    downloads.received_bytes,
+    downloads.total_bytes
+FROM downloads, downloads_url_chains
+WHERE downloads.id = downloads_url_chains.id;
+
+-- Search Terms
+SELECT 
+    urls.id,
+    ((urls.last_visit_time/1000)-11644473600000) AS last_visit,
+    term,
+    urls.title,
+    urls.url
+FROM urls, keyword_search_terms
+WHERE urls.id = keyword_search_terms.url_id
+ORDER BY urls.last_visit_time DESC;
+```
+
+### Firefox Queries
+
+```sql
+-- History
+SELECT 
+    moz_places.id,
+    moz_places.title,
+    moz_historyvisits.visit_date/1000 AS visit_time,
+    moz_places.url
+FROM moz_places, moz_historyvisits
+WHERE moz_places.id = moz_historyvisits.place_id
+ORDER BY moz_historyvisits.visit_date;
+
+-- Bookmarks
+SELECT 
+    moz_bookmarks.id,
+    moz_bookmarks.title,
+    moz_places.url,
+    moz_bookmarks.dateAdded/1000 AS date_added,
+    moz_bookmarks.lastModified/1000 AS last_modified
+FROM moz_places, moz_bookmarks
+WHERE moz_places.id = moz_bookmarks.fk
+ORDER BY moz_bookmarks.dateAdded;
+
+-- Downloads
+SELECT 
+    moz_places.id,
+    moz_places.url,
+    path.content AS file_path,
+    attributes.content AS download_info
+FROM moz_places
+INNER JOIN moz_annos AS path
+    ON (moz_places.id = path.place_id AND path.anno_attribute_id = 3)
+INNER JOIN moz_annos AS attributes
+    ON (moz_places.id = attributes.place_id AND attributes.anno_attribute_id = 4);
+```
+
+## CSS Styling
+
+Reports use consistent CSS:
+
+```css
+table {
+    border-collapse: collapse;
+}
+
+table, td, th {
+    border: 1px solid black;
+}
+
+th {
+    background-color: #AAAAEE;
+    font-weight: bold;
+    text-align: center;
+}
+
+tr:nth-child(even) {
+    background-color: #E7E7F0;
+}
+```
+
+## Error Handling
+
+<Warning>
+If SQLite parsing fails, parsers fall back to SQLite3Parser to ensure database content is still extracted.
+</Warning>
+
+```java
+catch (Exception e) {
+    sqliteParser.parse(tis, handler, metadata, context);
+    throw new TikaException("SQLite parsing exception", e);
+}
+```
+
+## Best Practices
+
+<Steps>
+  <Step title="Enable Entry Extraction">
+    Set `extractEntries=true` to create searchable individual records
+  </Step>
+  <Step title="Consider Database Size">
+    Large history databases may produce thousands of entries
+  </Step>
+  <Step title="Check Time Zones">
+    Browser timestamps are typically UTC - consider timezone conversion
+  </Step>
+  <Step title="Link Downloads to Files">
+    Use LOCAL_PATH to correlate download records with actual files
+  </Step>
+</Steps>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Chat Parsers" icon="comments" href="/parsers/chat-applications">
+    Learn about messaging application parsers
+  </Card>
+  <Card title="P2P Parsers" icon="share-nodes" href="/parsers/p2p-applications">
+    Explore peer-to-peer application parsers
+  </Card>
+</CardGroup>

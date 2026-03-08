@@ -1,0 +1,344 @@
+---
+title: Optical Character Recognition (OCR)
+description: Text extraction from images and scanned documents using Tesseract
+---
+
+IPED integrates Tesseract 5 OCR engine to extract text from images, scanned documents, and PDFs without embedded text, making visual content searchable.
+
+## Overview
+
+The OCR feature enables:
+
+- Text extraction from images in 70+ languages
+- Scanned document processing
+- PDF page-by-page OCR
+- Multi-format image support
+- Indexed and searchable OCR results
+
+## Powered by Tesseract 5
+
+IPED uses Tesseract version 5, the latest open-source OCR engine:
+
+- Improved accuracy over previous versions
+- LSTM neural network-based recognition
+- Better handling of complex layouts
+- Support for multiple languages simultaneously
+
+```java
+// Detected at startup
+LOGGER.info("Detected Tesseract " + tessVersion);
+```
+
+## Supported Image Formats
+
+### Direct Support (Native Tesseract)
+- PNG
+- JPEG  
+- TIFF (multi-page)
+- BMP
+- PBM, PGM, PPM (Portable formats)
+
+### Extended Support (with conversion)
+- GIF
+- WebP
+- JPEG 2000 (JP2, JPX)
+- HEIC/HEIF
+- Adobe Photoshop (PSD)
+- RAW camera formats
+- SVG, EMF, WMF vector formats
+
+### Non-Image Formats
+- **PDF** - Each page converted to image for OCR
+
+## Configuration
+
+OCR is configured in `conf/OCRConfig.txt`:
+
+```properties
+# Enable OCR processing
+tesseract.enabled = true
+
+# Tesseract binary path (leave empty if in PATH)
+tesseract.path = 
+
+# Language model (por, eng, spa, etc.)
+ocr.language = por
+
+# Page segmentation mode (1-13)
+ocr.pageSegMode = 1
+
+# Skip files found in hash database
+ocr.skipKnownFiles = false
+
+# File size limits (bytes)
+ocr.minFileSize = 10000
+ocr.maxFileSize = 100000000
+
+# Process non-standard image formats
+ocr.processNonStandard = true
+
+# Maximum image dimension for conversion
+ocr.maxConvImageSize = 3000
+```
+
+## Language Models
+
+IPED supports all Tesseract language models:
+
+### Pre-installed
+- Portuguese (`por`)
+- English (`eng`)
+
+### Additional Languages
+Download from [Tesseract models](https://github.com/tesseract-ocr/tessdata):
+
+- Spanish (`spa`)
+- French (`fra`)  
+- German (`deu`)
+- Italian (`ita`)
+- Chinese (`chi_sim`, `chi_tra`)
+- Arabic (`ara`)
+- Russian (`rus`)
+- Japanese (`jpn`)
+- And 60+ more languages
+
+Place downloaded `.traineddata` files in Tesseract's `tessdata` directory.
+
+## Page Segmentation Modes
+
+The `pageSegMode` parameter controls how Tesseract analyzes page layout:
+
+- **0** - Orientation and script detection only
+- **1** - Automatic page segmentation with OSD (default)
+- **3** - Fully automatic without OSD
+- **4** - Single column of text
+- **6** - Single uniform block of text  
+- **7** - Single text line
+- **11** - Sparse text (find as much text as possible)
+- **13** - Raw line (treats image as single text line)
+
+## Implementation Details
+
+OCR processing flow:
+
+### 1. File Filtering
+```java
+if (size >= MIN_SIZE && size <= MAX_SIZE 
+    && !SKIP_KNOWN_FILES && itemInfo.isKnown()) {
+    // Process OCR
+}
+```
+
+### 2. Image Preparation
+
+For standard images:
+- Read directly into Tesseract
+
+For PDFs:
+```java
+private void parsePDF(XHTMLContentHandler xhtml, File input, File output) {
+    PDFToImage pdfConverter = new PDFToImage();
+    pdfConverter.load(input);
+    for (int page = 0; page < pdfConverter.getNumPages(); page++) {
+        // Convert page to image
+        // OCR the image
+        // Aggregate results
+    }
+}
+```
+
+For multi-page TIFF:
+```java
+private void parseTiff(XHTMLContentHandler xhtml, File input) {
+    ImageReader reader = ImageIO.getImageReaders(iis).next();
+    int numPages = reader.getNumImages(true);
+    // OCR each page separately to avoid timeouts
+}
+```
+
+For non-standard formats:
+- Convert to standard format using ImageMagick or internal converters
+- Resize if exceeds maximum dimensions
+- OCR converted image
+
+### 3. Tesseract Execution
+
+```java
+String[] cmd = { 
+    tesseractPath, 
+    INPUT_FILE_TOKEN,   // Input image
+    OUTPUT_FILE_TOKEN,  // Output text file
+    "-l", LANGUAGE,      // Language model
+    "--psm", PAGESEGMODE // Page segmentation mode
+};
+
+Process process = new ProcessBuilder(cmd).start();
+```
+
+### 4. Result Storage
+
+OCR results stored in SQLite database:
+
+```sql
+CREATE TABLE IF NOT EXISTS ocr(
+    id TEXT PRIMARY KEY,     -- Hash + page number
+    text TEXT                -- Extracted text
+);
+```
+
+Benefits:
+- Fast lookup for duplicate files
+- Persistent across processing sessions
+- Reduced reprocessing time
+- Efficient storage
+
+## Performance Optimization
+
+### Image Preprocessing
+- **Downsampling** - Large images resized to 3000x3000 max
+- **Format conversion** - Non-standard formats converted once
+- **Page-by-page** - Large documents processed incrementally
+
+### Multithreading
+- OpenMP disabled to prevent thread conflicts:
+```java
+env.put("OMP_THREAD_LIMIT", "1");
+```
+- Each file processed in separate thread by IPED task manager
+
+### Caching
+- Results cached in database by file hash
+- Duplicate files skip OCR entirely  
+- Significant speedup for datasets with duplicates
+
+### Timeouts
+Prevents hanging on problematic images:
+- Configurable timeout per operation
+- Automatic retry with conversion for corrupted images
+
+## Subset Processing
+
+OCR can be limited to specific bookmarks or categories:
+
+```properties
+subsetToOcr = Important_#_Bookmarked
+```
+
+This enables:
+- Faster initial processing
+- Two-pass workflow (process all, then OCR subset)
+- Resource management for large cases
+
+## Quality Metrics
+
+IPED tracks OCR quality:
+
+```java
+metadata.set(OCRParser.OCR_CHAR_COUNT, Integer.toString(charCount));
+```
+
+- Character count stored as metadata
+- Helps identify successful vs. failed OCR
+- Useful for quality assessment
+
+## Integration Features
+
+### Indexed Text
+- OCR text added to full-text index
+- Searchable like native document text
+- Hit highlighting in OCR content
+
+### Result Display
+- OCR text shown in text viewer
+- Formatted as plain text
+- Clearly marked as OCR content
+
+### Export
+- OCR text included in reports
+- Available in HTML and CSV exports
+- Preserved in portable cases
+
+## Use Cases
+
+### Scanned Documents
+Extract text from:
+- Scanned contracts and agreements  
+- Historical documents
+- Medical records
+- Financial statements
+
+### Screenshots
+Make searchable:
+- Chat application screenshots
+- Web page captures
+- Email screenshots
+- Error messages and logs
+
+### Photo Evidence
+Extract text from:
+- License plates
+- Street signs
+- Document photographs
+- Whiteboard images
+
+### Memes and Graphics
+Process:
+- Image macros with overlaid text
+- Infographics
+- Social media content
+
+## Accuracy Considerations
+
+### Factors Affecting Accuracy
+
+**Image Quality**
+- Resolution (300+ DPI recommended)
+- Contrast and brightness
+- Focus and sharpness
+
+**Text Characteristics**
+- Font type and size
+- Text orientation  
+- Language and script
+
+**Background**
+- Noise and artifacts
+- Complex backgrounds
+- Skew and rotation
+
+### Improving Results
+
+1. **Choose appropriate language model** - Match document language
+2. **Adjust page segmentation** - Try different modes for layout types
+3. **Preprocess images** - Enhance contrast, deskew, denoise
+4. **Use higher DPI** - Scan documents at 300 DPI or higher
+
+## Troubleshooting
+
+### Low Accuracy
+- Verify correct language model selected
+- Check image quality and resolution
+- Try different page segmentation modes
+- Preprocess images to enhance text
+
+### Performance Issues
+- Reduce `maxFileSize` to skip very large images
+- Enable `skipKnownFiles` to avoid processing known content
+- Use `subsetToOcr` for selective processing
+- Increase processing threads if CPU underutilized
+
+### Missing Text
+- Verify OCR is enabled in configuration
+- Check file size within min/max limits
+- Ensure Tesseract installed and in PATH
+- Review OCR character count in metadata
+
+## External Dependencies
+
+Required:
+- **Tesseract 5.x** - OCR engine binary
+
+Optional:
+- **ImageMagick** - Extended format support  
+- **Ghostscript** - PDF to image conversion
+- **libgif, libopenjp2, libwebp** - Additional image format libraries

@@ -1,0 +1,575 @@
+---
+title: Graph Analysis
+description: Network analysis and visualization of communications and relationships
+---
+
+IPED includes powerful graph analysis capabilities for visualizing and analyzing communication networks, relationships, and connections between people, devices, and entities extracted from digital evidence.
+
+## Overview
+
+Graph analysis enables:
+
+- **Communication visualization** - See who contacted whom and when
+- **Relationship mapping** - Identify connections between people
+- **Network analysis** - Understand communication patterns and structures
+- **Entity linking** - Connect phone numbers, emails, accounts to persons
+- **Social network reconstruction** - Map social relationships from digital evidence
+
+## Powered by Neo4j
+
+IPED uses Neo4j graph database for storage and analysis:
+
+```java
+public static final String DB_NAME = "graph.db";
+public static final String DB_HOME_DIR = "neo4j";
+```
+
+Benefits:
+- Optimized for relationship queries
+- Cypher query language
+- Built-in graph algorithms
+- Scalable to millions of nodes
+- Visual graph browser
+
+## Graph Components
+
+### Nodes (Entities)
+
+Graph nodes represent entities:
+
+#### Person
+Individuals identified by:
+- Phone number (primary)
+- Email address
+- User account (service + username)
+- Name, organization, address
+
+#### Phone
+Phone numbers:
+- International format (+1-555-123-4567)
+- Linked to Person nodes
+- Associated contacts
+
+#### Email  
+Email addresses:
+- Normalized lowercase
+- Linked to Person nodes
+- Associated name
+
+#### Contact Group
+Chat groups and distribution lists:
+- WhatsApp groups
+- Email distribution lists
+- Telegram channels
+
+#### Data Source
+Evidence sources:
+- Device identifiers
+- Evidence UUID
+- MSISDN (mobile number)
+
+#### WiFi Network
+Wireless networks:
+- SSID (network name)
+- BSSID (MAC address)
+
+### Relationships (Edges)
+
+Graph relationships represent interactions:
+
+#### Message
+Instant messages:
+- WhatsApp, Telegram, Discord, Skype
+- UFED mobile extractions
+- Direction: sender → recipient
+
+#### Email
+Email communications:
+- Sent messages
+- CC and BCC included
+- Direction: sender → recipient(s)
+
+#### Call
+Phone calls:
+- Voice and video calls
+- Call duration
+- Direction: caller → recipient
+
+#### Contact
+Stored contacts:
+- Address book entries
+- Direction: device owner → contact
+
+#### User Account
+Account ownership:
+- Social media accounts
+- Application accounts  
+- Direction: person → account
+
+#### Wireless Network
+WiFi connections:
+- Network associations
+- Direction: device → network
+
+## Data Extraction
+
+Graph task processes evidence items to extract entities and relationships:
+
+```java
+public void process(IItem evidence) {
+    if (!isEnabled() || !evidence.isToAddToCase()) {
+        return;
+    }
+    
+    processCommunicationMetadata(evidence);
+    processContacts(evidence);
+    processWifi(evidence);
+    processUserAccount(evidence);
+    processExtraAttributes(evidence);
+}
+```
+
+### Communication Processing
+
+```java
+private void processCommunicationMetadata(IItem evidence) {
+    Metadata metadata = evidence.getMetadata();
+    String sender = metadata.get(ExtraProperties.COMMUNICATION_FROM);
+    String[] recipients = metadata.getValues(ExtraProperties.COMMUNICATION_TO);
+    
+    // Create sender node
+    NodeValues senderNode = getNodeValues(sender, metadata, detectPhones);
+    graphFileWriter.writeNode(senderNode);
+    
+    // Create relationship to each recipient
+    for (String recipient : recipients) {
+        NodeValues recipientNode = getNodeValues(recipient, metadata, detectPhones);
+        graphFileWriter.writeNode(recipientNode);
+        graphFileWriter.writeRelationship(
+            senderNode, recipientNode, relationshipType, relProps);
+    }
+}
+```
+
+## Entity Recognition
+
+IPED automatically detects and normalizes entities:
+
+### Phone Number Detection
+
+Uses Google's libphonenumber library:
+
+```java
+private SortedSet<String> getPhones(String value) {
+    PhoneNumberUtil phoneUtil = PhoneNumberUtil.getInstance();
+    
+    // Find all phone numbers in text
+    for (PhoneNumberMatch m : phoneUtil.findNumbers(
+            value, phoneRegion, Leniency.POSSIBLE, Integer.MAX_VALUE)) {
+        
+        PhoneNumber phoneNumber = m.number();
+        
+        // Format to international standard
+        String phone = phoneUtil.format(phoneNumber, 
+                                        PhoneNumberFormat.INTERNATIONAL);
+        
+        result.add(phone);
+    }
+}
+```
+
+Features:
+- International format normalization
+- Multiple formats recognized
+- Country code detection
+- WhatsApp ID parsing (55999@s.whatsapp.net)
+- Brazil-specific handling (9th digit)
+
+### Email Detection
+
+Pattern-based extraction:
+
+```java
+private static Pattern emailPattern = Pattern.compile(
+    "[0-9a-zA-Z\\+\\.\\_\\%\\-\\#\\!]{1,64}" +
+    "\\@[0-9a-zA-Z\\-]{2,64}" +
+    "(\\.[0-9a-zA-Z\\-]{2,25}){1,3}");
+
+private SortedSet<String> getEmails(String text) {
+    Matcher matcher = emailPattern.matcher(text);
+    while (matcher.find()) {
+        String email = matcher.group().toLowerCase();
+        result.add(email);
+    }
+}
+```
+
+Features:
+- Normalized to lowercase
+- Extracts from formatted text (e.g., "Name &lt;email@example.com&gt;")
+- Validates basic format
+- Handles multiple emails
+
+### Account Detection
+
+Service-specific account parsing:
+
+```java
+private NodeValues getAccountNodeValues(String value, Metadata meta) {
+    String service = meta.get(ExtraProperties.USER_ACCOUNT_TYPE);
+    
+    // Parse format: "Name (username)"
+    int idx = value.lastIndexOf('(');
+    if (idx != -1 && value.endsWith(")")) {
+        String account = value.substring(idx + 1, value.length() - 1);
+        String name = value.substring(0, idx).trim();
+        
+        return new NodeValues(
+            PERSON_LABEL, 
+            USER_ACCOUNT,
+            getServiceAccount(account, service)  // "username (Skype)"
+        );
+    }
+}
+```
+
+Supported services:
+- Skype
+- Telegram  
+- Discord
+- Instagram
+- Facebook
+- Twitter
+- Custom applications
+
+## Node Merging
+
+IPED intelligently merges nodes representing the same entity:
+
+```java
+private NodeValues writePersonNode(IItem item, SortedSet<String> msisdnPhones) {
+    // Collect all identifiers
+    SortedSet<String> emails = getEmails(metadata);
+    SortedSet<String> phones = getPhones(metadata);
+    String[] accounts = metadata.getValues(ExtraProperties.USER_ACCOUNT);
+    
+    // Create node with primary identifier
+    NodeValues personNode;
+    if (!phones.isEmpty()) {
+        personNode = new NodeValues(PERSON_LABEL, USER_PHONE, phones.first());
+    } else if (!emails.isEmpty()) {
+        personNode = new NodeValues(PERSON_LABEL, USER_EMAIL, emails.first());
+    } else if (accounts.length > 0) {
+        personNode = new NodeValues(PERSON_LABEL, USER_ACCOUNT, accounts[0]);
+    }
+    
+    // Add all additional identifiers
+    personNode.addProp(USER_PHONE, phones);
+    personNode.addProp(USER_EMAIL, emails);
+    personNode.addProp(USER_ACCOUNT, accounts);
+    
+    // Write node replacement rules
+    for (String email : emails) {
+        graphFileWriter.writeNodeReplace(PERSON_LABEL, USER_EMAIL, email, uniqueId);
+    }
+    for (String phone : phones) {
+        graphFileWriter.writeNodeReplace(PERSON_LABEL, USER_PHONE, phone, uniqueId);
+    }
+}
+```
+
+Merging logic:
+- Person with phone +1-555-1234 merged with email john@example.com
+- Results in single Person node with both identifiers
+- All relationships preserved
+- Deduplication across data sources
+
+## Supported Data Sources
+
+Graph extraction works with:
+
+### Mobile Apps
+- **WhatsApp** - Messages, calls, groups, contacts
+- **Telegram** - Messages, calls, channels, contacts  
+- **Skype** - Messages, calls, contacts
+- **Discord** - Messages, calls, servers
+
+### Email
+- **Outlook PST** - Emails, contacts
+- **EML files** - Individual messages
+- **MBOX** - Email archives
+
+### Mobile Extractions
+- **UFED** - Cellebrite extractions (calls, messages, contacts)
+- **Android backups** - App data
+- **iOS backups** - App data
+
+### Standard Formats
+- **VCard** - Contact files
+- **CSV** - Contact lists
+
+## Configuration
+
+Graph task configured in `GraphTaskConfig.txt`:
+
+```properties
+# Enable graph generation
+enableGraphTask = true
+
+# Phone number region for parsing
+phoneRegion = BR
+
+# Include/exclude categories (regex)
+includeCategoriesPattern = .*
+excludeCategoriesPattern = (^$)
+
+# MIME types for phone detection
+detectPhonesOnMimes = application/x-whatsapp-message
+dontDetectPhonesOnMimes = message/rfc822
+detectPhonesOnOtherMimes = false
+
+# Process proximity relationships (experimental)
+processProximityRelationships = false
+maxProximityDistance = 100
+```
+
+### Phone Region
+
+Critical for phone number parsing:
+- **BR** - Brazil (+55)
+- **US** - United States (+1)
+- **GB** - United Kingdom (+44)  
+- **DE** - Germany (+49)
+- etc.
+
+Correct region ensures:
+- Proper international format
+- National number recognition
+- Accurate merging
+
+### Category Filtering
+
+Control which items contribute to graph:
+
+```properties
+# Only process communications
+includeCategoriesPattern = (Chats|Email|Calls)
+
+# Exclude system files  
+excludeCategoriesPattern = (System Files|Carved)
+```
+
+## Graph Generation
+
+Graph built using Neo4j bulk import:
+
+```java
+private void finishGraphGeneration() {
+    logger.info("Generating graph database...");
+    File graphDbHome = new File(output, DB_HOME_DIR);
+    File graphCSVs = new File(output, CSVS_PATH);
+    
+    GraphGenerator graphGenerator = new GraphGenerator();
+    graphGenerator.generate(graphDbHome, graphCSVs);
+    
+    logger.info("Generating graph database finished.");
+}
+```
+
+Process:
+1. During processing, write nodes/edges to CSV files
+2. After processing completes, bulk import CSVs
+3. Generate Neo4j database in output folder
+4. Compress CSV files for archival
+
+## Analysis Interface
+
+IPED analysis interface provides graph visualization:
+
+### Graph Viewer
+
+- **Interactive visualization** - Zoom, pan, drag nodes
+- **Node coloring** - By type (person, device, group)
+- **Edge styling** - By relationship type (message, call, email)
+- **Filtering** - Show/hide node and edge types
+- **Search** - Find specific entities
+- **Expand/collapse** - Show/hide related nodes
+
+### Communication Links Tab
+
+Dedicated tab showing:
+- List of all communications
+- Sender and recipient columns
+- Communication type and time
+- Link to original evidence item
+- Sortable and filterable
+
+### Query Interface
+
+Cypher query support:
+
+```cypher
+// Find all contacts of person with phone
+MATCH (p:PERSON {phone:"+55 11 98765-4321"})-[:message]->(c:PERSON)
+RETURN c.phone, c.email, c.name
+
+// Find communication paths between two people  
+MATCH path = shortestPath(
+  (p1:PERSON {phone:"+1-555-1234"})
+  -[*]-(p2:PERSON {phone:"+1-555-5678"}))
+RETURN path
+
+// Find most active communicators
+MATCH (p:PERSON)-[r:message]->()
+RETURN p.phone, p.name, count(r) as messages
+ORDER BY messages DESC
+LIMIT 10
+```
+
+## Graph Metrics
+
+Calculate network metrics:
+
+### Degree Centrality
+Number of direct connections:
+- Who has most contacts?
+- Communication hubs
+
+### Betweenness Centrality  
+How often node appears on shortest paths:
+- Information brokers
+- Critical links
+
+### Closeness Centrality
+Average distance to all nodes:
+- Central figures
+- Information reach
+
+### Community Detection
+Identify clusters:
+- Friend groups
+- Criminal cells
+- Organizational structure
+
+## Use Cases
+
+### Criminal Network Mapping
+
+Identify organized crime structure:
+1. Extract communications from all suspects
+2. Generate graph showing connections
+3. Identify leadership (high centrality)
+4. Find intermediaries (high betweenness)
+5. Detect cells/sub-groups (communities)
+
+### Person of Interest Investigation
+
+Map associates of target:
+1. Find target node in graph
+2. Expand to show direct contacts
+3. Expand contacts to 2nd degree
+4. Identify unknown associates
+5. Prioritize for investigation
+
+### Link Analysis
+
+Connect seemingly unrelated cases:
+1. Combine graphs from multiple cases
+2. Identify shared contacts
+3. Find communication between cases
+4. Detect coordinated activity
+
+### Social Engineering Detection
+
+Identify compromised accounts:
+1. Map normal communication patterns
+2. Detect anomalous connections
+3. Find unusual outreach
+4. Identify potential phishing
+
+## Proximity Relationships
+
+Experimental feature linking entities based on proximity in text:
+
+```java
+if (configuration.getProcessProximityRelationships()) {
+    processExtraAttributes(evidence);
+}
+```
+
+Logic:
+- Extracts regex hits (emails, phones, etc.)
+- Finds entities appearing near each other in text
+- Creates relationship if within maxProximityDistance characters
+- Useful for unstructured data (documents, web pages)
+
+Example:
+- Document mentions "Contact John at john@example.com or +1-555-1234"
+- Creates Person node linking email and phone
+- Infers name "John"
+
+## Performance Considerations
+
+### Scalability
+
+- Tested with **millions of communications**
+- Neo4j handles large graphs efficiently  
+- Bulk import faster than incremental
+- Graph queries optimized with indexes
+
+### Memory Usage
+
+During processing:
+- CSV files written incrementally
+- Bounded memory usage
+- Node cache with LRU eviction
+
+### Processing Time
+
+Graph generation:
+- 1-2% of total processing time
+- Bulk import typically less than 10 minutes
+- Scales with number of communications
+
+## Export Options
+
+### CSV Export
+
+Export nodes and edges as CSV:
+- Nodes: ID, labels, properties
+- Edges: source, target, type, properties
+- Import into external tools (Gephi, Tableau)
+
+### GraphML Export  
+
+Standard graph format:
+- Compatible with graph analysis tools
+- Preserves structure and attributes
+- Visualize in yEd, Cytoscape, etc.
+
+### Report Integration
+
+Graph included in HTML reports:
+- Embedded visualization
+- Key metrics summary
+- Most active communicators
+- Network statistics
+
+## Best Practices
+
+1. **Set correct phone region** - Critical for number normalization
+2. **Review merged nodes** - Verify entities merged correctly
+3. **Filter noise** - Exclude system communications and spam
+4. **Use communities** - Identify sub-networks for focused analysis  
+5. **Export for deep analysis** - Use specialized tools for complex queries
+6. **Document findings** - Annotate graph with investigation notes
+7. **Cross-reference evidence** - Validate graph data with original items
+
+## Limitations
+
+- Requires structured metadata from parsers
+- Phone/email detection not 100% accurate
+- Entity resolution can merge wrong nodes
+- Group chats challenging to represent
+- Deleted participants may be missing
+- Timezone handling for global investigations
